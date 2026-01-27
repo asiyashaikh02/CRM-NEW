@@ -2,7 +2,8 @@
 import { ENV } from '../config/env';
 import { db } from '../config/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { MOCK_DATA } from '../data/mockDb';
+// Corrected import from MOCK_DATA to MOCK_DB
+import { MOCK_DB } from '../data/mockDb';
 
 export const leadService = {
   getLeads: async (userId?: string) => {
@@ -13,7 +14,8 @@ export const leadService = {
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
     
-    if (userId) return MOCK_DATA.leads.filter(l => l.salesUserId === userId);
-    return MOCK_DATA.leads;
+    // Fixed usage of MOCK_DATA to MOCK_DB
+    if (userId) return MOCK_DB.leads.filter(l => l.salesUserId === userId);
+    return MOCK_DB.leads;
   }
 };

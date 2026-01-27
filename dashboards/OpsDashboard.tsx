@@ -1,121 +1,76 @@
 
-import React, { useState, useEffect } from 'react';
-import { Customer, ExecutionStage } from '../types';
-import { customerService } from '../services/customer.service';
+import React, { useMemo } from 'react';
+import { Customer, ExecutionStage, WorkStatus } from '../types';
 import { Icons } from '../constants';
-import { getOperationsOptimization } from '../services/geminiService';
+import { useAuthContext } from '../context/AuthContext';
+import { formatCurrency } from '../config/appConfig';
+import { MOCK_DB } from '../data/mockDb';
+import { RoutePath } from '../App';
 
-export const OpsDashboard: React.FC = () => {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [optimizationTip, setOptimizationTip] = useState<string>("Neural optimizer active. Analyze workstream for velocity improvements.");
-  const [isOptimizing, setIsOptimizing] = useState(false);
+export const OpsDashboard: React.FC<{ onNavigate: (path: RoutePath, params?: any) => void }> = ({ onNavigate }) => {
+  const { currentUser } = useAuthContext();
 
-  console.log("OpsDashboard: Render initiated");
+  const customers = useMemo(() => {
+    return MOCK_DB.customers.filter(c => c.opsId === currentUser?.uid);
+  }, [currentUser]);
 
-  const fetchData = async () => {
-    try {
-      const c = await customerService.getCustomers();
-      const activeOnes = (c as Customer[] || []).filter(cust => cust.status === 'ACTIVE');
-      setCustomers(activeOnes);
-    } catch (e) {
-      console.error("OpsDashboard: Fetch error", e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleOptimize = async () => {
-    if (!customers.length) {
-      setOptimizationTip("Neural optimizer: No active workstreams detected for optimization.");
-      return;
-    }
-    setIsOptimizing(true);
-    // Use the first active customer as context for optimization
-    const target = customers[0];
-    try {
-      const tips = await getOperationsOptimization(target.name, target.executionStage);
-      setOptimizationTip(tips);
-    } catch (error) {
-      setOptimizationTip("Neural link disrupted. Optimization failed.");
-    } finally {
-      setIsOptimizing(false);
-    }
-  };
-
-  if (isLoading) return <div className="text-slate-400 font-black uppercase tracking-widest animate-pulse">Initializing Execution Board...</div>;
+  const stats = useMemo(() => ({
+    active: customers.filter(c => c.workStatus !== WorkStatus.COMPLETED).length,
+    efficiency: "92%",
+    delayed: customers.filter(c => c.workStatus === WorkStatus.ON_HOLD).length
+  }), [customers]);
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-700">
+    <div className="space-y-10 animate-fade-in text-left">
       <header className="flex flex-col md:flex-row justify-between items-start gap-6">
         <div>
-          <h2 className="text-5xl font-black text-slate-900 tracking-tighter text-left">Ops Command</h2>
-          <p className="text-slate-400 font-bold mt-2 uppercase text-xs tracking-[0.3em] text-left">Delivery & Resource Layer</p>
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">Execution Command</h2>
+          <p className="text-slate-400 dark:text-slate-500 font-bold mt-1 uppercase text-[9px] tracking-[0.3em]">Operational Health Dashboard</p>
         </div>
-        <button 
-          onClick={handleOptimize}
-          disabled={isOptimizing}
-          className="flex items-center gap-3 bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-2xl disabled:opacity-50">
-          <Icons.Sparkles />
-          {isOptimizing ? 'Optimizing...' : 'Neural Optimization'}
-        </button>
       </header>
 
-      {(isOptimizing || optimizationTip !== "Neural optimizer active. Analyze workstream for velocity improvements.") && (
-        <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-indigo-200 animate-in slide-in-from-top duration-500">
-           <div className="flex items-center gap-4 mb-4">
-              <Icons.Sparkles />
-              <h4 className="font-black text-xs uppercase tracking-widest">AI Efficiency Insight</h4>
-           </div>
-           <p className={`text-indigo-100 text-sm font-bold leading-relaxed ${isOptimizing ? 'animate-pulse' : ''}`}>
-             {isOptimizing ? 'Analyzing workstream velocity and phase transitions...' : optimizationTip}
-           </p>
-        </div>
-      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <HealthCard label="Active Deployment" value={stats.active} icon="⚙️" onClick={() => onNavigate('projects', { status: 'active' })} />
+        <HealthCard label="Internal Velocity" value={stats.efficiency} icon="⚡" onClick={() => onNavigate('projects-flow')} />
+        <HealthCard label="Protocol Delays" value={stats.delayed} icon="⚠️" color="text-rose-500" onClick={() => onNavigate('projects', { status: 'delayed' })} pulse={stats.delayed > 0} />
+      </div>
 
-      <section className="space-y-8 text-left">
-        <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-8">Active Workstream</h3>
-        <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
-           <table className="w-full text-left">
-             <thead className="bg-slate-50 border-b border-slate-100">
-               <tr className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">
-                 <th className="px-10 py-6">Asset</th>
-                 <th className="px-10 py-6">Execution Phase</th>
-                 <th className="px-10 py-6 text-right">Burn Rate</th>
-               </tr>
-             </thead>
-             <tbody className="divide-y divide-slate-100">
-               {customers.length === 0 ? (
-                 <tr><td colSpan={3} className="px-10 py-20 text-center text-slate-300 font-bold italic">No active assets in pipeline.</td></tr>
-               ) : (
-                 customers.map(c => (
-                   <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
-                     <td className="px-10 py-8">
-                        <p className="font-black text-slate-900 text-base">{c.name}</p>
-                        <p className="text-[10px] font-black text-slate-400 uppercase mt-1">Ref: {c.id?.toUpperCase()}</p>
-                     </td>
-                     <td className="px-10 py-8">
-                        <select 
-                          defaultValue={c.executionStage}
-                          className="bg-slate-100 border-none rounded-xl text-[10px] font-black uppercase tracking-widest p-3 px-6 focus:ring-2 focus:ring-indigo-500 cursor-pointer outline-none transition-all"
-                        >
-                           <option value={ExecutionStage.PLANNING}>Planning</option>
-                           <option value={ExecutionStage.EXECUTION}>Execution</option>
-                           <option value={ExecutionStage.DELIVERED}>Delivered</option>
-                        </select>
-                     </td>
-                     <td className="px-10 py-8 text-right font-mono font-black text-rose-500 text-lg">${(c.internalCost || 0).toLocaleString()}</td>
-                   </tr>
-                 ))
-               )}
-             </tbody>
-           </table>
-        </div>
-      </section>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        <section className="lg:col-span-8 bg-white dark:bg-slate-900 p-12 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm group">
+           <h3 className="text-xl font-black tracking-tight mb-8">Performance Node Architecture</h3>
+           <div className="space-y-10">
+              <div className="flex items-end gap-6">
+                 <p className="text-6xl font-black tracking-tighter text-indigo-600">{stats.efficiency}</p>
+                 <div className="pb-2"><p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.4em]">Node Success Index</p></div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                 <button onClick={() => onNavigate('projects')} className="bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 p-6 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl transition-all hover:scale-[1.02] active:scale-95">Open Assignment Registry</button>
+                 <button onClick={() => onNavigate('projects-flow')} className="bg-indigo-600 text-white p-6 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl transition-all hover:scale-[1.02] active:scale-95">Visual Execution Flow</button>
+              </div>
+           </div>
+        </section>
+
+        <aside className="lg:col-span-4 bg-indigo-600 rounded-[3rem] p-10 text-white space-y-8 shadow-2xl overflow-hidden relative">
+           <div className="absolute top-0 right-0 p-10 opacity-10 rotate-12"><Icons.Sparkles /></div>
+           <h4 className="text-[10px] font-black uppercase tracking-widest">AI Oversight Protocol</h4>
+           <p className="text-sm font-medium leading-relaxed italic opacity-90">"Asset deployment cycles are currently synced. Master Registry reports 2 nodes awaiting final billing finalization."</p>
+           <div className="pt-6 border-t border-white/20">
+              <p className="text-[9px] font-black uppercase tracking-widest text-indigo-200">System Priority</p>
+              <p className="text-lg font-black mt-2 tracking-tight">Cycle-Time Optimization</p>
+           </div>
+        </aside>
+      </div>
     </div>
   );
 };
+
+const HealthCard = ({ label, value, icon, onClick, color = 'text-indigo-600', pulse }: any) => (
+  <div onClick={onClick} className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-200 dark:border-slate-800 cursor-pointer hover:shadow-lg transition-all relative flex items-center justify-between group">
+     <div>
+       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+       <p className={`text-3xl font-black ${color}`}>{value}</p>
+     </div>
+     <div className="text-2xl opacity-20 group-hover:opacity-100 transition-opacity">{icon}</div>
+     {pulse && <span className="absolute top-4 right-4 flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span></span>}
+  </div>
+);
