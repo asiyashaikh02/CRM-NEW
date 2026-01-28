@@ -9,17 +9,20 @@ import { userService } from '../services/user.service';
 export const ProfilePage: React.FC = () => {
   const { currentUser } = useAuthContext();
   const [isEditing, setIsEditing] = useState(false);
-  const [form, setForm] = useState<any>(() => MOCK_DB.profiles.find((p: any) => p.uid === currentUser?.uid) || {});
+  // Fixed: Changed MOCK_DB.profiles to MOCK_DB.users
+  const [form, setForm] = useState<any>(() => MOCK_DB.users.find((p: any) => p.uid === currentUser?.uid) || {});
   const [isSaving, setIsSaving] = useState(false);
 
-  const profile = MOCK_DB.profiles.find((p: any) => p.uid === currentUser?.uid) || {
-    uniqueId: 'UID-GEN-PENDING',
-    name: currentUser?.displayName || '',
-    email: currentUser?.email || '',
-    contact: 'NOT_SET',
-    address: 'HQ_DEFAULT',
-    role: currentUser?.role || '',
-    createdAt: Date.now()
+  // Fixed: Mapping user data from MOCK_DB.users to the expected profile display object
+  const userFromDb = MOCK_DB.users.find((p: any) => p.uid === currentUser?.uid);
+  const profile = {
+    uniqueId: userFromDb?.uid || 'UID-GEN-PENDING',
+    name: userFromDb?.displayName || currentUser?.displayName || '',
+    email: userFromDb?.email || currentUser?.email || '',
+    contact: userFromDb?.mobile || 'NOT_SET',
+    address: userFromDb?.location?.address || 'HQ_DEFAULT',
+    role: userFromDb?.role || currentUser?.role || '',
+    createdAt: userFromDb?.createdAt || Date.now()
   };
 
   const handleUpdate = async () => {

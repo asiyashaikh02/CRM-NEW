@@ -1,8 +1,9 @@
+
 import { doc, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { Customer, CustomerStatus, ExecutionStage, Lead, OpsStatus, WorkStatus } from "../types";
 
-// Fixed: Added missing required fields (opsStatus, workStatus, activityLogs, invoices, receipts) to match Customer interface.
+// Fixed: Added missing required fields (opsStatus, workStatus, activityLogs, invoices, receipts, payments, tasks, advanceCollected, gstApplied) to match Customer interface.
 export const convertLeadToCustomer = async (lead: Lead) => {
   const batch = writeBatch(db);
   const customerId = `cust_${lead.id}`;
@@ -22,13 +23,17 @@ export const convertLeadToCustomer = async (lead: Lead) => {
     executionStage: ExecutionStage.PLANNING,
     internalCost: 0,
     billingAmount: lead.potentialValue,
+    // Added missing required fields
+    advanceCollected: 0,
+    gstApplied: false,
     conversionAt: Date.now(),
     conversionDeadline: Date.now() + (72 * 60 * 60 * 1000), // 72 hours
     createdFromLeadId: lead.id,
     activityLogs: [],
-    // Added required invoices and receipts property to fix the interface error.
     invoices: [],
-    receipts: []
+    receipts: [],
+    payments: [],
+    tasks: []
   };
 
   batch.set(doc(db, "customers", customerId), customerData);

@@ -14,13 +14,12 @@ export const AdminDashboard: React.FC<{ onNavigate: (path: RoutePath, params?: a
   const stats = useMemo(() => {
     MOCK_DB.checkDeadlines();
     const totalCollected = customers.reduce((acc, c) => {
-      const paidInvoices = c.invoices.filter(i => i.status === InvoiceStatus.PAID);
-      return acc + paidInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+      return acc + (c.payments?.reduce((sum, p) => sum + p.amount, 0) || 0);
     }, 0);
 
     const projectFlow = {
       initiated: customers.filter(c => c.executionStage === ExecutionStage.PLANNING).length,
-      advReceived: customers.filter(c => c.invoices.some(i => i.type === 'ADVANCE' && i.status === InvoiceStatus.PAID)).length,
+      advReceived: customers.filter(c => c.payments?.some(p => p.type === 'ADVANCE')).length,
       inProgress: customers.filter(c => c.executionStage === ExecutionStage.EXECUTION).length,
       onHold: customers.filter(c => c.workStatus === 'ON_HOLD').length,
       completed: customers.filter(c => c.executionStage === ExecutionStage.CLOSED).length
@@ -36,6 +35,7 @@ export const AdminDashboard: React.FC<{ onNavigate: (path: RoutePath, params?: a
           <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">Command Control</h2>
           <p className="text-slate-400 dark:text-slate-500 font-bold uppercase text-[9px] tracking-[0.3em]">Network Authority Summary</p>
         </div>
+        <button onClick={() => onNavigate('reports')} className="bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-6 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-xl">Full Analytics</button>
       </div>
 
       {/* KPI Cards */}
@@ -48,7 +48,7 @@ export const AdminDashboard: React.FC<{ onNavigate: (path: RoutePath, params?: a
           onClick={() => onNavigate('leads', { source: 'network' })} 
         />
         <SummaryCard 
-          label="Active Leads" 
+          label="Active Pipeline" 
           value={leads.filter(l => l.status !== LeadStatus.CONVERTED).length} 
           color="blue" 
           icon={<Icons.Leads />} 
@@ -62,7 +62,7 @@ export const AdminDashboard: React.FC<{ onNavigate: (path: RoutePath, params?: a
           onClick={() => onNavigate('projects', { status: 'active' })} 
         />
         <SummaryCard 
-          label="Pending Approvals" 
+          label="Registry Tasks" 
           value={users.filter(u => u.status === UserStatus.PENDING).length} 
           color="amber" 
           icon={<Icons.Users />} 
@@ -72,13 +72,12 @@ export const AdminDashboard: React.FC<{ onNavigate: (path: RoutePath, params?: a
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* Project Flow Visual Indicator */}
         <section 
           onClick={() => onNavigate('projects-flow')}
           className="lg:col-span-8 bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm cursor-pointer group hover:border-indigo-500 transition-all"
         >
           <div className="flex justify-between items-center mb-8">
-            <h3 className="text-xl font-black tracking-tight">Project Flow Optimization</h3>
+            <h3 className="text-xl font-black tracking-tight">Deployment Strategy Flow</h3>
             <span className="text-[9px] font-black uppercase text-indigo-600 tracking-widest group-hover:underline">View Pipeline Hub</span>
           </div>
           <div className="flex items-center gap-1 w-full h-12 bg-slate-50 dark:bg-slate-800 rounded-2xl p-1 overflow-hidden">
@@ -91,37 +90,36 @@ export const AdminDashboard: React.FC<{ onNavigate: (path: RoutePath, params?: a
           <div className="grid grid-cols-5 gap-2 mt-4">
              <FlowLegend color="bg-slate-400" label="Initiated" />
              <FlowLegend color="bg-blue-500" label="Adv Paid" />
-             <FlowLegend color="bg-orange-500" label="In Progress" />
-             <FlowLegend color="bg-rose-500" label="On Hold" />
-             <FlowLegend color="bg-emerald-500" label="Completed" />
+             <FlowLegend color="bg-orange-500" label="Execution" />
+             <FlowLegend color="bg-rose-500" label="Delayed" />
+             <FlowLegend color="bg-emerald-500" label="Finalized" />
           </div>
         </section>
 
-        {/* User Summary Card */}
         <section 
           onClick={() => onNavigate('users')}
-          className="lg:col-span-4 bg-slate-900 rounded-[3rem] p-10 text-white flex flex-col justify-between cursor-pointer hover:bg-slate-800 transition-all group"
+          className="lg:col-span-4 bg-slate-900 rounded-[3rem] p-10 text-white flex flex-col justify-between cursor-pointer hover:bg-slate-800 transition-all group shadow-2xl"
         >
            <div>
              <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Identity Node Registry</p>
-             <h3 className="text-3xl font-black tracking-tighter">{users.length} Authorized Units</h3>
+             <h3 className="text-3xl font-black tracking-tighter">{users.length} Authority Nodes</h3>
            </div>
            <div className="pt-10 space-y-4">
-              <UserRow label="Sales Agents" count={users.filter(u => u.role === 'SALES').length} onClick={() => onNavigate('users', { role: 'SALES' })} />
-              <UserRow label="Ops Managers" count={users.filter(u => u.role === 'OPERATIONS').length} onClick={() => onNavigate('users', { role: 'OPERATIONS' })} />
+              <UserRow label="Sales Authority" count={users.filter(u => u.role === 'SALES').length} onClick={() => onNavigate('users', { role: 'SALES' })} />
+              <UserRow label="Ops Operations" count={users.filter(u => u.role === 'OPERATIONS').length} onClick={() => onNavigate('users', { role: 'OPERATIONS' })} />
               <div className="pt-4 border-t border-white/10 flex justify-between items-center text-indigo-400 font-black text-[9px] uppercase tracking-widest group-hover:text-white transition-colors">
-                 <span>Manage Registry</span>
+                 <span>Manage Node Registry</span>
                  <Icons.Sparkles />
               </div>
            </div>
         </section>
       </div>
 
-      {/* Revenue Snapshot */}
-      <section className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm">
-         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <section className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative group">
+         <div className="absolute top-0 right-0 p-10 opacity-5 scale-150 rotate-12 transition-transform group-hover:rotate-45 duration-1000"><Icons.Sparkles /></div>
+         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
             <div>
-               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Portfolio Value Pulse</p>
+               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Portfolio Capital Index</p>
                <p className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">{formatCurrency(stats.totalCollected)}</p>
             </div>
             <div className="flex gap-4">

@@ -19,7 +19,8 @@ export const userService = {
       await updateDoc(doc(db, "users", uid), { status: UserStatus.APPROVED });
       return;
     }
-    MOCK_DB.approveUser(uid, MOCK_DB.users.find(u => u.uid === uid)?.role || UserStatus.APPROVED as any);
+    // Fix: removed second argument as MOCK_DB.approveUser only accepts uid
+    MOCK_DB.approveUser(uid);
   },
 
   updateUser: async (uid: string, data: Partial<User>) => {

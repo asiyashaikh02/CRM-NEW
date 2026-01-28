@@ -5,12 +5,15 @@ import { Icons } from '../constants';
 import { ExecutionStage, CustomerStatus, WorkStatus } from '../types';
 import { formatCurrency } from '../config/appConfig';
 import { RoutePath } from '../App';
+import { CountdownTimer } from '../components/CountdownTimer';
 
 export const ProjectsPage: React.FC<{ isFlow?: boolean, params?: any, onNavigate: (path: RoutePath, params?: any) => void }> = ({ isFlow, params, onNavigate }) => {
   const [view, setView] = useState<'LIST' | 'FLOW'>(isFlow ? 'FLOW' : 'LIST');
   const [search, setSearch] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const projects = useMemo(() => {
+    MOCK_DB.checkDeadlines();
     let list = MOCK_DB.customers;
     if (params?.status === 'active') list = list.filter(c => c.executionStage !== ExecutionStage.CLOSED);
     if (params?.status === 'delayed') list = list.filter(c => c.workStatus === WorkStatus.ON_HOLD);
@@ -21,7 +24,11 @@ export const ProjectsPage: React.FC<{ isFlow?: boolean, params?: any, onNavigate
       list = list.filter(c => c.companyName.toLowerCase().includes(s) || c.name.toLowerCase().includes(s));
     }
     return list;
-  }, [params, search]);
+  }, [params, search, refreshTrigger]);
+
+  const handleDeadlineExpire = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   return (
     <div className="space-y-12 text-left animate-fade-in">
@@ -38,10 +45,10 @@ export const ProjectsPage: React.FC<{ isFlow?: boolean, params?: any, onNavigate
 
       {view === 'FLOW' ? (
         <section className="grid grid-cols-1 md:grid-cols-4 gap-8">
-           <FlowColumn title="Initiated" projects={projects.filter(p => p.executionStage === ExecutionStage.PLANNING)} color="bg-slate-400" onNavigate={onNavigate} />
-           <FlowColumn title="In Progress" projects={projects.filter(p => p.executionStage === ExecutionStage.EXECUTION)} color="bg-orange-500" onNavigate={onNavigate} />
-           <FlowColumn title="Delivered" projects={projects.filter(p => p.executionStage === ExecutionStage.DELIVERED)} color="bg-indigo-500" onNavigate={onNavigate} />
-           <FlowColumn title="Finalized" projects={projects.filter(p => p.executionStage === ExecutionStage.CLOSED)} color="bg-emerald-500" onNavigate={onNavigate} />
+           <FlowColumn title="Initiated" projects={projects.filter(p => p.executionStage === ExecutionStage.PLANNING)} color="bg-slate-400" onNavigate={onNavigate} onExpire={handleDeadlineExpire} />
+           <FlowColumn title="In Progress" projects={projects.filter(p => p.executionStage === ExecutionStage.EXECUTION)} color="bg-orange-500" onNavigate={onNavigate} onExpire={handleDeadlineExpire} />
+           <FlowColumn title="Delivered" projects={projects.filter(p => p.executionStage === ExecutionStage.DELIVERED)} color="bg-indigo-500" onNavigate={onNavigate} onExpire={handleDeadlineExpire} />
+           <FlowColumn title="Finalized" projects={projects.filter(p => p.executionStage === ExecutionStage.CLOSED)} color="bg-emerald-500" onNavigate={onNavigate} onExpire={handleDeadlineExpire} />
         </section>
       ) : (
         <section className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -54,7 +61,7 @@ export const ProjectsPage: React.FC<{ isFlow?: boolean, params?: any, onNavigate
                 <div className="py-20 text-center font-bold text-slate-300">Registry empty for current telemetry signals.</div>
               ) : (
                 projects.map(p => (
-                  <div key={p.id} onClick={() => onNavigate('project-detail', { id: p.id })} className="flex flex-col md:flex-row items-start md:items-center justify-between p-8 bg-slate-50 dark:bg-slate-950 rounded-[2rem] border border-slate-100 dark:border-slate-800 hover:border-indigo-400 transition-all cursor-pointer group shadow-sm hover:shadow-md">
+                  <div key={p.id} onClick={() => onNavigate('project-detail', { id: p.id })} className="flex flex-col md:flex-row items-start md:items-center justify-between p-8 bg-slate-50 dark:bg-slate-950 rounded-[2rem] border border-slate-100 dark:border-slate-800 hover:border-indigo-400 transition-all cursor-pointer group shadow-sm hover:shadow-md relative overflow-hidden">
                      <div className="flex items-center gap-6 mb-4 md:mb-0">
                         <div className="w-14 h-14 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center font-black text-indigo-600 shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-all text-xl">{p.companyName.charAt(0)}</div>
                         <div>
@@ -63,6 +70,12 @@ export const ProjectsPage: React.FC<{ isFlow?: boolean, params?: any, onNavigate
                         </div>
                      </div>
                      <div className="flex flex-wrap items-center gap-10 w-full md:w-auto">
+                        {p.status === CustomerStatus.CONVERTING && (
+                           <div className="flex flex-col items-center px-6 py-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                              <p className="text-[8px] font-black uppercase text-slate-400 mb-1">Acquisition Window</p>
+                              <CountdownTimer deadline={p.conversionDeadline} onExpire={handleDeadlineExpire} className="text-sm" />
+                           </div>
+                        )}
                         <div className="text-left md:text-right flex-1 min-w-[120px]">
                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Revenue Hub</p>
                            <p className="text-base font-black text-indigo-600">{formatCurrency(p.billingAmount)}</p>
@@ -82,7 +95,7 @@ export const ProjectsPage: React.FC<{ isFlow?: boolean, params?: any, onNavigate
   );
 };
 
-const FlowColumn = ({ title, projects, color, onNavigate }: any) => (
+const FlowColumn = ({ title, projects, color, onNavigate, onExpire }: any) => (
   <div className="space-y-6">
      <div className="flex items-center gap-3 px-4">
         <div className={`w-2 h-2 rounded-full ${color}`} />
@@ -92,7 +105,12 @@ const FlowColumn = ({ title, projects, color, onNavigate }: any) => (
      <div className="bg-slate-100/50 dark:bg-slate-900/50 p-4 rounded-[2.5rem] border border-slate-200/50 dark:border-slate-800 space-y-4 min-h-[500px]">
         {projects.map((p: any) => (
           <div key={p.id} onClick={() => onNavigate('project-detail', { id: p.id })} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-indigo-400 transition-all cursor-pointer group animate-in slide-in-from-bottom duration-300">
-             <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest mb-1">{p.name}</p>
+             <div className="flex justify-between items-start mb-2">
+                <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">{p.name}</p>
+                {p.status === CustomerStatus.CONVERTING && (
+                  <CountdownTimer deadline={p.conversionDeadline} onExpire={onExpire} className="text-[9px]" />
+                )}
+             </div>
              <h5 className="font-black text-slate-900 dark:text-white leading-tight">{p.companyName}</h5>
              <div className="mt-6 pt-4 border-t border-slate-50 dark:border-slate-800 flex justify-between items-center">
                 <p className="text-[10px] font-black text-slate-400">{formatCurrency(p.billingAmount)}</p>

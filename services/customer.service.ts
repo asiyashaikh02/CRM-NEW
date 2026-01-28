@@ -3,7 +3,7 @@ import { ENV } from '../config/env';
 import { db } from '../config/firebase';
 import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
 import { MOCK_DB } from '../data/mockDb';
-import { Customer, Location, OpsStatus, WorkStatus, InvoiceType, Invoice, ExecutionStage } from '../types';
+import { Customer, Location, OpsStatus, WorkStatus, InvoiceType, Invoice, ExecutionStage, PaymentMode, User } from '../types';
 
 export const customerService = {
   getCustomers: async (userId?: string, role?: string) => {
@@ -26,6 +26,16 @@ export const customerService = {
     return MOCK_DB.customers;
   },
 
+  recordPayment: async (customerId: string, data: { amount: number, type: InvoiceType, mode: PaymentMode, notes?: string }, creator: User) => {
+    if (ENV.USE_FIREBASE) return null;
+    return MOCK_DB.recordPayment(customerId, data, creator);
+  },
+
+  completeTask: async (customerId: string, taskId: string, proofs: string[], creator: User) => {
+    if (ENV.USE_FIREBASE) return false;
+    return MOCK_DB.completeTask(customerId, taskId, proofs, creator);
+  },
+
   convertLead: async (leadId: string, data: { 
     location: Location; 
     email: string; 
@@ -37,16 +47,6 @@ export const customerService = {
   }) => {
     if (ENV.USE_FIREBASE) return null;
     return MOCK_DB.convertLead(leadId, data);
-  },
-
-  createInvoice: async (customerId: string, data: { type: InvoiceType, amount: number }, userId: string, userName: string) => {
-    if (ENV.USE_FIREBASE) return;
-    return MOCK_DB.createInvoice(customerId, data, userId, userName);
-  },
-
-  markInvoicePaid: async (customerId: string, invoiceId: string, userId: string, userName: string) => {
-    if (ENV.USE_FIREBASE) return;
-    MOCK_DB.markInvoicePaid(customerId, invoiceId, userId, userName);
   },
 
   updateCustomer: async (customerId: string, data: Partial<Customer>, userId: string, userName: string) => {
@@ -67,10 +67,5 @@ export const customerService = {
       userId,
       userName
     });
-  },
-
-  addCustomLog: async (customerId: string, action: string, note: string, userId: string, userName: string) => {
-    if (ENV.USE_FIREBASE) return;
-    MOCK_DB.addActivityLog(customerId, { action, note, userId, userName });
   }
 };

@@ -6,6 +6,17 @@ export enum UserRole {
   USER = 'USER'
 }
 
+export enum AuthStatus {
+  UNVERIFIED = 'UNVERIFIED',
+  ACTIVE = 'ACTIVE'
+}
+
+export enum ProfileStatus {
+  NOT_STARTED = 'NOT_STARTED',
+  INCOMPLETE = 'INCOMPLETE',
+  COMPLETED = 'COMPLETED'
+}
+
 export enum UserStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
@@ -24,7 +35,8 @@ export enum LeadSource {
   INSTAGRAM = 'INSTAGRAM',
   WEBSITE = 'WEBSITE',
   REFERRAL = 'REFERRAL',
-  MANUAL = 'MANUAL'
+  MANUAL = 'MANUAL',
+  NETWORK = 'NETWORK'
 }
 
 export enum LeadPriority {
@@ -61,38 +73,21 @@ export enum ExecutionStage {
   CLOSED = 'CLOSED'
 }
 
+export enum InvoiceStatus {
+  DRAFT = 'DRAFT',
+  SENT = 'SENT',
+  PAID = 'PAID',
+  OVERDUE = 'OVERDUE',
+  CANCELLED = 'CANCELLED'
+}
+
+export type PaymentMode = 'UPI' | 'CASH' | 'BANK' | 'BANK_TRANSFER';
+
 export enum InvoiceType {
   ADVANCE = 'ADVANCE',
-  FINAL = 'FINAL'
-}
-
-export enum InvoiceStatus {
-  UNPAID = 'UNPAID',
-  PAID = 'PAID',
-  OVERDUE = 'OVERDUE'
-}
-
-export interface Receipt {
-  id: string;
-  invoiceId: string;
-  customerId: string;
-  amount: number;
-  collectedBy: string; // userId
-  timestamp: number;
-}
-
-export interface Invoice {
-  id: string;
-  customerId: string;
-  type: InvoiceType;
-  amount: number; // Base amount
-  taxAmount: number; // GST
-  totalAmount: number; // amount + taxAmount
-  totalOrderValue: number;
-  status: InvoiceStatus;
-  createdAt: number;
-  paidAt?: number;
-  dueDate: number;
+  MILESTONE = 'MILESTONE',
+  FINAL = 'FINAL',
+  ADJUSTMENT = 'ADJUSTMENT'
 }
 
 export interface Location {
@@ -104,22 +99,32 @@ export interface Location {
   lng?: number;
 }
 
+export interface BankDetails {
+  accountHolder: string;
+  accountNumber: string;
+  ifscCode: string;
+  bankName: string;
+}
+
 export interface User {
   uid: string;
   email: string;
   role: UserRole;
-  status: UserStatus;
+  authStatus: AuthStatus;
+  profileStatus: ProfileStatus;
   displayName: string;
   mobile: string;
+  profileCompleted: boolean;
   location?: Location;
-  age?: number;
-  gender?: 'Male' | 'Female' | 'Other';
+  bankDetails?: BankDetails;
   aadhaar?: string;
-  profileImage?: string;
+  panNumber?: string;
+  gender?: 'Male' | 'Female' | 'Other';
+  dob?: string;
   createdAt: number;
   approvedAt?: number;
-  internalNotes?: string;
-  tags?: string[];
+  age?: number;
+  status?: UserStatus; 
 }
 
 export interface ActivityLog {
@@ -132,6 +137,61 @@ export interface ActivityLog {
   createdByName: string;
 }
 
+export interface Proof {
+  url: string;
+  uploadedAt: number;
+}
+
+export interface Task {
+  id: string;
+  name: string;
+  status: 'PENDING' | 'COMPLETED';
+  proofUrl?: string;
+  completedAt?: number;
+  customerId?: string;
+  assignedTo?: string;
+  assignedToName?: string;
+  proofs: Proof[];
+  milestoneLinked?: InvoiceType;
+}
+
+export interface Invoice {
+  id: string;
+  customerId: string;
+  amount: number;
+  status: InvoiceStatus;
+  type: InvoiceType;
+  createdAt: number;
+  dueDate: number;
+}
+
+export interface Receipt {
+  id: string;
+  paymentId: string;
+  customerId: string;
+  customerName: string;
+  customerUid: string;
+  amount: number;
+  mode: PaymentMode;
+  date: number;
+  authorizedBy: string;
+}
+
+export interface Payment {
+  id: string;
+  amount: number;
+  type: InvoiceType;
+  mode: PaymentMode;
+  createdAt: number;
+  customerId?: string;
+  projectId?: string;
+  status?: string;
+  reference?: string;
+  notes?: string;
+  createdBy?: string;
+  createdByName?: string;
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -140,22 +200,26 @@ export interface Customer {
   email: string;
   location: Location;
   salesId: string;
-  opsId: string; // 'PENDING' initially
+  opsId: string;
   status: CustomerStatus;
-  opsStatus: OpsStatus;
-  workStatus: WorkStatus;
-  rejectionReason?: string;
   executionStage: ExecutionStage;
-  billingAmount: number; // This is the Total Order Value
-  internalCost: number;
+  billingAmount: number;
+  advanceCollected: number;
+  gstApplied: boolean;
   conversionAt: number;
   conversionDeadline: number;
-  createdFromLeadId: string;
   activityLogs: ActivityLog[];
+  payments: Payment[];
+  tasks: Task[];
+  opsStatus?: OpsStatus;
+  workStatus?: WorkStatus;
+  internalCost?: number;
+  createdFromLeadId?: string;
+  receipts: Receipt[];
+  invoices: Invoice[];
   gstNumber?: string;
   industry?: string;
-  invoices: Invoice[];
-  receipts: Receipt[];
+  rejectionReason?: string;
 }
 
 export interface Lead {
@@ -170,12 +234,11 @@ export interface Lead {
   salesUserId: string;
   potentialValue: number;
   createdAt: number;
-  location?: Location;
-  industry?: string;
   notes?: string;
+  location?: Location | string;
 }
 
 export const maskAadhaar = (aadhaar?: string) => {
-  if (!aadhaar) return 'NOT_PROVIDED';
+  if (!aadhaar) return 'NOT_SET';
   return 'XXXX-XXXX-' + aadhaar.slice(-4);
 };
