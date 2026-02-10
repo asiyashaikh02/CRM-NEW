@@ -3,7 +3,7 @@ import { ENV } from '../config/env';
 import { db } from '../config/firebase';
 import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
 import { MOCK_DB } from '../data/mockDb';
-import { Customer, OpsStatus, WorkStatus, InvoiceStatus, Invoice, ExecutionStage, PaymentMode, User } from '../types';
+import { Customer, OpsStatus, WorkStatus, ExecutionStage, PaymentMode, User } from '../types';
 
 export const customerService = {
   getCustomers: async (userId?: string, role?: string) => {
@@ -28,11 +28,13 @@ export const customerService = {
 
   recordPayment: async (customerId: string, data: { amount: number, invoiceId: string, mode: PaymentMode, reference: string }, creator: User) => {
     if (ENV.USE_FIREBASE) return null;
+    // Updated to match the implementation in MOCK_DB
     return MOCK_DB.recordPayment(customerId, data.invoiceId, data.amount, data.mode, data.reference, creator);
   },
 
   completeTask: async (customerId: string, taskId: string, proofs: string[], creator: User) => {
     if (ENV.USE_FIREBASE) return false;
+    // Updated to match the implementation in MOCK_DB
     return MOCK_DB.completeTask(customerId, taskId, proofs, creator);
   },
 
@@ -44,6 +46,7 @@ export const customerService = {
     advanceRequired?: number;
   }) => {
     if (ENV.USE_FIREBASE) return null;
+    // Updated to match the implementation in MOCK_DB
     return MOCK_DB.convertLead(leadId, data);
   },
 
@@ -59,6 +62,7 @@ export const customerService = {
       : { opsStatus: OpsStatus.REJECTED, rejectionReason: reason };
     
     MOCK_DB.updateCustomer(customerId, update as any, userId, userName);
+    // Fixed: addActivityLog is now correctly implemented in MOCK_DB
     MOCK_DB.addActivityLog(customerId, {
       action: action === 'ACCEPT' ? 'OPS_ACCEPTED' : 'OPS_REJECTED',
       note: action === 'ACCEPT' ? `Task accepted by ${userName}` : `Task rejected by ${userName}. Reason: ${reason}`,

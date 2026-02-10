@@ -1,13 +1,13 @@
 
 export enum UserRole {
   ADMIN = 'ADMIN',
-  SALES = 'SALES',
-  OPS = 'OPS',
-  USER = 'USER',
+  SALES_MANAGER = 'SALES_MANAGER',
+  OPS_MANAGER = 'OPS_MANAGER',
   SALES_USER = 'SALES_USER',
   OPS_USER = 'OPS_USER',
-  SALES_MANAGER = 'SALES_MANAGER',
-  OPS_MANAGER = 'OPS_MANAGER'
+  SALES = 'SALES', 
+  OPS = 'OPS',
+  USER = 'USER'
 }
 
 export enum UserStatus {
@@ -23,12 +23,14 @@ export enum PlanType {
 }
 
 export enum CustomerStatus {
+  DRAFT = 'DRAFT',
   PENDING_APPROVAL = 'PENDING_APPROVAL',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
   ACTIVE = 'ACTIVE',
   COMPLETED = 'COMPLETED',
   TRANSFERRED_TO_OPS = 'TRANSFERRED_TO_OPS',
+  LOCKED = 'LOCKED',
   DELETED = 'DELETED'
 }
 
@@ -97,6 +99,7 @@ export enum InvoiceStatus {
 
 export interface Invoice {
   id: string;
+  customerId: string;
   amount: number;
   status: InvoiceStatus;
   createdAt: number;
@@ -112,6 +115,7 @@ export interface User {
   mobile?: string;
   aadhaar?: string;
   address?: string;
+  assignedArea?: string;
   isProfileComplete?: boolean;
   bankDetails?: {
     account: string;
@@ -120,6 +124,7 @@ export interface User {
   govtId?: string;
   emergencyContact?: string;
   password?: string;
+  managerId?: string;
 }
 
 export type AuthStatus = 'LOADING' | 'AUTHENTICATED' | 'UNAUTHENTICATED';
@@ -132,7 +137,10 @@ export interface Customer {
   phone: string;
   email: string;
   address: string;
-  plantCapacity: number; // in kW
+  city: string;
+  lat?: number;
+  lng?: number;
+  plantCapacity: number;
   selectedPlan: PlanType;
   discount: number;
   finalPrice: number;
@@ -146,6 +154,7 @@ export interface Customer {
   workStatus: WorkStatus;
   executionStage: ExecutionStage;
   conversionDeadline: number;
+  serviceDate: number; // Added for Phase 3
   invoices: any[];
   payments: any[];
   assignedOps?: string;
@@ -159,7 +168,10 @@ export interface Lead {
   id: string;
   name: string;
   phone: string;
-  location: string;
+  location: string; 
+  city: string;
+  lat?: number;
+  lng?: number;
   source: string;
   status: string;
   createdAt: number;
@@ -170,27 +182,6 @@ export interface Lead {
   priority: string;
   email?: string;
   notes?: string;
-}
-
-export interface Order {
-  id: string;
-  leadId: string;
-  clientName: string;
-  panelCount: number;
-  serviceDate: number;
-  assignedCleaner: string;
-  status: OrderStatus;
-  createdAt: number;
-}
-
-export interface Payment {
-  id: string;
-  orderId: string;
-  clientName: string;
-  amount: number;
-  mode: PaymentMode;
-  status: PaymentStatus;
-  createdAt: number;
 }
 
 export type RoutePath = 
@@ -206,16 +197,14 @@ export type RoutePath =
   | 'customers'
   | 'project-detail'
   | 'add'
-  | 'add-customer';
+  | 'add-customer'
+  | 'reports';
 
 export interface ViewState {
   path: RoutePath;
   id?: string;
 }
 
-/**
- * Enterprise utility to mask Aadhaar for privacy.
- */
 export const maskAadhaar = (val?: string) => {
   if (!val) return 'XXXX XXXX XXXX';
   return 'XXXX XXXX ' + val.slice(-4);

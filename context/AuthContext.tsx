@@ -1,14 +1,15 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { User, UserRole, AuthStatus } from '../types';
+import { User, UserRole, AuthStatus, UserStatus } from '../types';
 import { MOCK_DB } from '../data/mockDb';
 
 interface AuthContextType {
   currentUser: User | null;
   status: AuthStatus;
-  login: (email: string, pass: string) => Promise<boolean>;
+  login: (email: string, pass: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   sync: () => void;
+  updateProfile: (data: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,24 +40,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearTimeout(timer);
   }, [sync]);
 
-  /**
-   * Role-based login with hardcoded check. 
-   * Designed to be easily replaced by Firebase signInWithEmailAndPassword.
-   */
-  const login = async (email: string, pass: string): Promise<boolean> => {
+  const login = async (email: string, pass: string): Promise<{ success: boolean; message?: string }> => {
     setStatus('LOADING');
     return new Promise((resolve) => {
-      // Simulation delay for "Enterprise Feel"
       setTimeout(() => {
         const user = MOCK_DB.users.find(u => u.email === email && u.password === pass);
         if (user) {
+          // Check for head roles or approved status
+          const isHead = [UserRole.ADMIN, UserRole.SALES_MANAGER, UserRole.OPS_MANAGER].includes(user.role);
+          if (!isHead && user.status !== UserStatus.APPROVED) {
+            setStatus('UNAUTHENTICATED');
+            resolve({ success: false, message: "Account pending authorization. Contact your Head." });
+            return;
+          }
+
           setCurrentUser({ ...user });
           localStorage.setItem('solaroft_session_v1', JSON.stringify({ uid: user.uid }));
           setStatus('AUTHENTICATED');
-          resolve(true);
+          resolve({ success: true });
         } else {
           setStatus('UNAUTHENTICATED');
-          resolve(false);
+          resolve({ success: false, message: "Invalid credentials. Check registry sequence." });
         }
       }, 600);
     });
@@ -68,8 +72,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('solaroft_session_v1');
   };
 
+  const updateProfile = (data: Partial<User>) => {
+    if (currentUser) {
+      MOCK_DB.updateUser(currentUser.uid, data);
+      sync();
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ currentUser, status, login, logout, sync }}>
+    <AuthContext.Provider value={{ currentUser, status, login, logout, sync, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

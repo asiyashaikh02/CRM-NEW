@@ -1,4 +1,3 @@
-
 import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { Customer, CustomerStatus, ExecutionStage, Lead, WorkStatus, PlanType } from "../types";
@@ -16,6 +15,8 @@ export const convertLeadToCustomer = async (lead: Lead) => {
     phone: lead.phone || '',
     email: lead.email || '',
     address: '',
+    // Fix: Added missing city property from lead to satisfy Customer interface requirements
+    city: lead.city || '',
     panelCount: lead.panelCount,
     // Estimated capacity for new nodes
     plantCapacity: lead.panelCount * 0.5,
@@ -26,6 +27,8 @@ export const convertLeadToCustomer = async (lead: Lead) => {
     status: CustomerStatus.ACTIVE,
     createdAt: Date.now(),
     updatedAt: Date.now(),
+    // Fix: Added missing serviceDate property required by Customer interface
+    serviceDate: Date.now(),
     timeline: [],
     salesId: lead.salesUserId,
     opsId: 'PENDING',

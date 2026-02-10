@@ -3,6 +3,24 @@ import React, { useState } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import { Smartphone, MapPin, CreditCard, ShieldCheck, HeartPulse, UserCheck } from 'lucide-react';
 
+const Input = ({ label, value, onChange, placeholder, icon, required, disabled, type = 'text' }: any) => (
+  <div className="space-y-1.5 flex-1">
+    <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-4">{label}</label>
+    <div className="relative">
+      {icon && <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300">{icon}</div>}
+      <input 
+        type={type} 
+        value={value || ""} 
+        onChange={e => onChange(e.target.value)} 
+        disabled={disabled}
+        className={`w-full bg-slate-50 border border-brand-border rounded-2xl p-5 text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none transition-all ${icon ? 'pl-12' : ''} ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''}`} 
+        placeholder={placeholder} 
+        required={required}
+      />
+    </div>
+  </div>
+);
+
 export const ProfileCompletionPage: React.FC<{ isStandalone?: boolean; onComplete?: () => void }> = ({ isStandalone, onComplete }) => {
   const { currentUser, updateProfile } = useAuthContext();
   const [loading, setLoading] = useState(false);
@@ -55,7 +73,7 @@ export const ProfileCompletionPage: React.FC<{ isStandalone?: boolean; onComplet
           <Input 
             label="Primary Contact Signal" 
             value={form.mobile} 
-            onChange={v => setForm({...form, mobile:v})} 
+            onChange={(v: string) => setForm(prev => ({...prev, mobile:v}))} 
             placeholder="10-digit mobile number" 
             icon={<Smartphone size={16}/>} 
             required 
@@ -63,7 +81,7 @@ export const ProfileCompletionPage: React.FC<{ isStandalone?: boolean; onComplet
           <Input 
             label="Government Identity UID" 
             value={form.govtId} 
-            onChange={v => setForm({...form, govtId:v})} 
+            onChange={(v: string) => setForm(prev => ({...prev, govtId:v}))} 
             placeholder="Aadhaar / PAN / Passport" 
             icon={<ShieldCheck size={16}/>} 
             required 
@@ -73,7 +91,7 @@ export const ProfileCompletionPage: React.FC<{ isStandalone?: boolean; onComplet
         <Input 
           label="Registry Base Location (Full Address)" 
           value={form.address} 
-          onChange={v => setForm({...form, address:v})} 
+          onChange={(v: string) => setForm(prev => ({...prev, address:v}))} 
           placeholder="Complete street address, city, and pincode" 
           icon={<MapPin size={16}/>} 
           required 
@@ -83,7 +101,7 @@ export const ProfileCompletionPage: React.FC<{ isStandalone?: boolean; onComplet
           <Input 
             label="Emergency Contingency Node" 
             value={form.emergencyContact} 
-            onChange={v => setForm({...form, emergencyContact:v})} 
+            onChange={(v: string) => setForm(prev => ({...prev, emergencyContact:v}))} 
             placeholder="Name & contact of kin" 
             icon={<HeartPulse size={16}/>} 
             required 
@@ -104,7 +122,7 @@ export const ProfileCompletionPage: React.FC<{ isStandalone?: boolean; onComplet
             <Input 
               label="Bank Account Cluster" 
               value={form.bankAccount} 
-              onChange={v => setForm({...form, bankAccount:v})} 
+              onChange={(v: string) => setForm(prev => ({...prev, bankAccount:v}))} 
               placeholder="Account sequence" 
               icon={<CreditCard size={16}/>} 
               required 
@@ -112,7 +130,7 @@ export const ProfileCompletionPage: React.FC<{ isStandalone?: boolean; onComplet
             <Input 
               label="Bank IFSC Protocol" 
               value={form.bankIfsc} 
-              onChange={v => setForm({...form, bankIfsc:v})} 
+              onChange={(v: string) => setForm(prev => ({...prev, bankIfsc:v}))} 
               placeholder="Branch registry code" 
               icon={<CreditCard size={16}/>} 
               required 
@@ -127,21 +145,3 @@ export const ProfileCompletionPage: React.FC<{ isStandalone?: boolean; onComplet
     </div>
   );
 };
-
-const Input = ({ label, value, onChange, placeholder, icon, required, disabled, type = 'text' }: any) => (
-  <div className="space-y-1.5 flex-1">
-    <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-4">{label}</label>
-    <div className="relative">
-      {icon && <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300">{icon}</div>}
-      <input 
-        type={type} 
-        value={value} 
-        onChange={e => onChange(e.target.value)} 
-        disabled={disabled}
-        className={`w-full bg-slate-50 border border-brand-border rounded-2xl p-5 text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none transition-all ${icon ? 'pl-12' : ''} ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''}`} 
-        placeholder={placeholder} 
-        required={required}
-      />
-    </div>
-  </div>
-);

@@ -3,6 +3,8 @@ import React, { useState, useMemo } from 'react';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
 import { UserRole, RoutePath, ViewState } from './types';
 import { AdminDashboard } from './dashboards/AdminDashboard';
+import { SalesDashboard } from './dashboards/SalesDashboard';
+import { OpsDashboard } from './dashboards/OpsDashboard';
 import { LeadsPage } from './pages/LeadsPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { PaymentsPage } from './pages/PaymentsPage';
@@ -23,18 +25,19 @@ import {
   ShieldAlert,
   Lock,
   ChevronLeft,
-  Briefcase
+  Briefcase,
+  Activity
 } from 'lucide-react';
 
 const ROLE_PERMISSIONS: Record<UserRole, RoutePath[]> = {
-  [UserRole.ADMIN]: ['dashboard', 'leads', 'lead-detail', 'orders', 'order-detail', 'payments', 'payment-detail', 'users', 'user-detail', 'customers', 'project-detail', 'add'],
-  [UserRole.SALES]: ['dashboard', 'leads', 'lead-detail', 'customers', 'project-detail', 'add-customer', 'add'],
-  [UserRole.OPS]: ['dashboard', 'orders', 'order-detail', 'payments', 'payment-detail', 'customers', 'project-detail'],
-  [UserRole.USER]: ['dashboard', 'leads', 'lead-detail', 'orders', 'order-detail', 'payments', 'payment-detail'],
+  [UserRole.ADMIN]: ['dashboard', 'leads', 'lead-detail', 'orders', 'order-detail', 'payments', 'payment-detail', 'users', 'user-detail', 'customers', 'project-detail', 'add', 'reports'],
+  [UserRole.SALES_MANAGER]: ['dashboard', 'leads', 'lead-detail', 'customers', 'project-detail', 'add-customer', 'add', 'users'],
+  [UserRole.OPS_MANAGER]: ['dashboard', 'orders', 'order-detail', 'payments', 'payment-detail', 'customers', 'project-detail', 'users'],
   [UserRole.SALES_USER]: ['dashboard', 'leads', 'lead-detail', 'customers', 'project-detail', 'add-customer', 'add'],
   [UserRole.OPS_USER]: ['dashboard', 'orders', 'order-detail', 'payments', 'payment-detail', 'customers', 'project-detail'],
-  [UserRole.SALES_MANAGER]: ['dashboard', 'leads', 'lead-detail', 'customers', 'project-detail', 'add-customer', 'add'],
-  [UserRole.OPS_MANAGER]: ['dashboard', 'orders', 'order-detail', 'payments', 'payment-detail', 'customers', 'project-detail']
+  [UserRole.SALES]: ['dashboard', 'leads', 'lead-detail', 'customers', 'project-detail', 'add-customer', 'add'],
+  [UserRole.OPS]: ['dashboard', 'orders', 'order-detail', 'payments', 'payment-detail', 'customers', 'project-detail'],
+  [UserRole.USER]: ['dashboard', 'leads', 'lead-detail', 'orders', 'order-detail', 'payments', 'payment-detail']
 };
 
 const LoginPage = ({ onLogin }: any) => {
@@ -47,8 +50,8 @@ const LoginPage = ({ onLogin }: any) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const success = await onLogin(email, pass);
-    if (!success) setError("Authentication failure. Check registry credentials.");
+    const result = await onLogin(email, pass);
+    if (!result.success) setError(result.message || "Authentication failure.");
     setLoading(false);
   };
 
@@ -61,7 +64,7 @@ const LoginPage = ({ onLogin }: any) => {
         <h1 className="text-3xl font-bold font-grotesk tracking-tight text-slate-900 leading-none">Synckraft Portal</h1>
         <div className="flex items-center justify-center gap-2 mt-2">
           <Lock size={10} className="text-amber-500" />
-          <p className="text-slate-400 text-[10px] uppercase tracking-[0.3em] font-black">FEB MVP – LOCKED</p>
+          <p className="text-slate-400 text-[10px] uppercase tracking-[0.3em] font-black">PHASE 3 • SALES PROTOCOL</p>
         </div>
         {error && <div className="bg-rose-50 text-rose-500 p-4 rounded-xl text-xs font-bold mt-6">{error}</div>}
         <form onSubmit={handleLogin} className="space-y-4 mt-8">
@@ -71,6 +74,14 @@ const LoginPage = ({ onLogin }: any) => {
             {loading ? 'Decrypting...' : 'Authorize Access'}
           </button>
         </form>
+        <div className="mt-8 pt-8 border-t border-slate-100">
+           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Master Credentials</p>
+           <div className="grid grid-cols-3 gap-2 mt-3">
+              <div className="text-[8px] font-bold text-slate-500 bg-slate-50 p-2 rounded-lg">admin@gmail.com</div>
+              <div className="text-[8px] font-bold text-slate-500 bg-slate-50 p-2 rounded-lg">sales@gmail.com</div>
+              <div className="text-[8px] font-bold text-slate-500 bg-slate-50 p-2 rounded-lg">ops@gmail.com</div>
+           </div>
+        </div>
       </div>
     </div>
   );
@@ -100,13 +111,31 @@ const AppContent = () => {
       { id: 'customers', icon: <Briefcase size={18}/>, label: 'Customers', path: 'customers' as RoutePath },
       { id: 'orders', icon: <ClipboardList size={18}/>, label: 'Orders', path: 'orders' as RoutePath },
       { id: 'payments', icon: <IndianRupee size={18}/>, label: 'Payments', path: 'payments' as RoutePath },
-      { id: 'users', icon: <Users size={18}/>, label: 'Users', path: 'users' as RoutePath },
+      { id: 'users', icon: <Users size={18}/>, label: 'Employees', path: 'users' as RoutePath },
+      { id: 'reports', icon: <Activity size={18}/>, label: 'Reports', path: 'reports' as RoutePath },
     ];
     return allOptions.filter(item => canAccess(item.path));
   }, [currentUser]);
 
   if (status === 'LOADING') return <div className="h-screen flex items-center justify-center bg-slate-50"><div className="w-10 h-10 border-4 border-brand-blue border-t-transparent rounded-full animate-spin"></div></div>;
   if (!currentUser) return <LoginPage onLogin={login} />;
+
+  const renderDashboard = () => {
+    switch (currentUser.role) {
+      case UserRole.ADMIN:
+        return <AdminDashboard onNavigate={navigate} />;
+      case UserRole.SALES_MANAGER:
+      case UserRole.SALES_USER:
+      case UserRole.SALES:
+        return <SalesDashboard onNavigate={navigate} />;
+      case UserRole.OPS_MANAGER:
+      case UserRole.OPS_USER:
+      case UserRole.OPS:
+        return <OpsDashboard onNavigate={navigate} />;
+      default:
+        return <AdminDashboard onNavigate={navigate} />;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-inter overflow-hidden">
@@ -134,7 +163,7 @@ const AppContent = () => {
         <div className="pt-8 mt-8 border-t border-slate-100">
           <div className="px-4 py-3 bg-slate-50 rounded-2xl border border-slate-100">
             <p className="text-[10px] font-black text-slate-900 uppercase truncate">{currentUser.displayName}</p>
-            <p className="text-[7px] font-black text-brand-blue uppercase tracking-widest mt-1">{currentUser.role} PRIVILEGE</p>
+            <p className="text-[7px] font-black text-brand-blue uppercase tracking-widest mt-1">{currentUser.role.replace('_', ' ')} PRIVILEGE</p>
           </div>
           <button onClick={logout} className="w-full flex items-center gap-4 px-4 py-3.5 mt-4 rounded-2xl text-rose-500 hover:bg-rose-50 transition-all font-bold text-sm"><LogOut size={18}/> Sign Out</button>
         </div>
@@ -150,16 +179,16 @@ const AppContent = () => {
             )}
             <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{view.path.replace('-', ' ')} dossier</div>
           </div>
-          <div className="text-[10px] font-black text-slate-900 flex items-center gap-2"><div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>ENCRYPTED SESSION</div>
+          <div className="text-[10px] font-black text-slate-900 flex items-center gap-2"><div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>SECURE CLUSTER</div>
         </header>
 
         <div className="p-8 md:p-10 min-h-screen">
-          {view.path === 'dashboard' && <AdminDashboard onNavigate={navigate} />}
+          {view.path === 'dashboard' && renderDashboard()}
           {(view.path === 'leads' || view.path === 'lead-detail') && <LeadsPage onNavigate={navigate} selectedId={view.id} />}
           {(view.path === 'orders' || view.path === 'order-detail') && <OrdersPage onNavigate={navigate} selectedId={view.id} />}
           {(view.path === 'payments' || view.path === 'payment-detail') && <PaymentsPage onNavigate={navigate} selectedId={view.id} />}
           {(view.path === 'users' || view.path === 'user-detail') && <UsersPage onNavigate={navigate} selectedId={view.id} />}
-          {(view.path === 'customers' || view.path === 'project-detail') && <ProjectsPage onNavigate={navigate} id={view.id} />}
+          {(view.path === 'customers' || view.path === 'project-detail') && <ProjectsPage onNavigate={navigate} />}
           {view.path === 'project-detail' && view.id && <ProjectDetailsPage id={view.id} onNavigate={navigate} />}
           {view.path === 'add-customer' && <CustomerCreatePage onNavigate={navigate} />}
           {view.path === 'add' && <UniversalAddPage onNavigate={navigate} />}
