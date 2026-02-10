@@ -4,6 +4,7 @@ import { db } from "../lib/firebase";
 import { Lead, LeadStatus } from "../types";
 
 export const createLead = async (data: Partial<Lead>, uid: string) => {
+  // Fixed: LeadStatus.NEW is now available in types.ts
   return addDoc(collection(db, "leads"), {
     ...data,
     salesUserId: uid,
