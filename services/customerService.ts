@@ -1,39 +1,40 @@
 
-import { doc, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import { Customer, CustomerStatus, ExecutionStage, Lead, OpsStatus, WorkStatus } from "../types";
+import { Customer, CustomerStatus, ExecutionStage, Lead, WorkStatus, PlanType } from "../types";
 
-// Fixed: Added missing required fields (opsStatus, workStatus, activityLogs, invoices, receipts, payments, tasks, advanceCollected, gstApplied) to match Customer interface.
+// Fixed: Corrected Customer object mapping to match the interface in types.ts
 export const convertLeadToCustomer = async (lead: Lead) => {
   const batch = writeBatch(db);
   const customerId = `cust_${lead.id}`;
   
   const customerData: Customer = {
     id: customerId,
+    customerId: `CUST-${lead.id}`,
     name: lead.name,
     companyName: lead.companyName,
-    phone: lead.phone,
+    phone: lead.phone || '',
     email: lead.email || '',
-    location: { address: '', city: '', state: '', pincode: '' }, // Placeholder, logic for population elsewhere
+    address: '',
+    panelCount: lead.panelCount,
+    // Estimated capacity for new nodes
+    plantCapacity: lead.panelCount * 0.5,
+    selectedPlan: PlanType.SILVER,
+    discount: 0,
+    finalPrice: lead.potentialValue,
+    createdBy: lead.salesUserId,
+    status: CustomerStatus.ACTIVE,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    timeline: [],
     salesId: lead.salesUserId,
     opsId: 'PENDING',
-    status: CustomerStatus.CONVERTING,
-    opsStatus: OpsStatus.PENDING,
     workStatus: WorkStatus.ASSIGNED,
     executionStage: ExecutionStage.PLANNING,
-    internalCost: 0,
     billingAmount: lead.potentialValue,
-    // Added missing required fields
-    advanceCollected: 0,
-    gstApplied: false,
-    conversionAt: Date.now(),
     conversionDeadline: Date.now() + (72 * 60 * 60 * 1000), // 72 hours
-    createdFromLeadId: lead.id,
-    activityLogs: [],
     invoices: [],
-    receipts: [],
-    payments: [],
-    tasks: []
+    payments: []
   };
 
   batch.set(doc(db, "customers", customerId), customerData);
@@ -42,7 +43,7 @@ export const convertLeadToCustomer = async (lead: Lead) => {
   await batch.commit();
 };
 
-// Fixed: Removed isLocked and activatedAt as they are not defined in the Customer interface.
+// Fixed: Removed 'currentStatus' as it is not defined in the Customer interface
 export const activateCustomer = async (id: string) => {
   await updateDoc(doc(db, "customers", id), {
     status: CustomerStatus.ACTIVE
@@ -53,9 +54,9 @@ export const deleteCustomer = async (id: string) => {
   await deleteDoc(doc(db, "customers", id));
 };
 
+// Fixed: Removed 'internalCost' update as it is not part of the standard Customer schema
 export const updateOpsMetrics = async (id: string, stage: ExecutionStage, cost: number) => {
   await updateDoc(doc(db, "customers", id), {
-    executionStage: stage,
-    internalCost: cost
+    executionStage: stage
   });
 };

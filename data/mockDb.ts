@@ -1,191 +1,323 @@
+import { User, UserRole, UserStatus, Customer, CustomerStatus, WorkStatus, ExecutionStage, PlanType, LeadStatus, LeadPriority, OrderStatus, PaymentStatus, PaymentMode } from '../types';
 
-import { User, Lead, Customer, UserRole, UserStatus, LeadStatus, LeadSource, CustomerStatus, ExecutionStage, Location, OpsStatus, WorkStatus, ActivityLog, LeadPriority, Invoice, InvoiceType, InvoiceStatus, Receipt, Payment, PaymentMode, Task, Proof, AuthStatus, ProfileStatus } from '../types';
-
-export const generateUniqueSystemID = () => `UID-${Math.floor(10000 + Math.random() * 90000)}`;
-export const generatePaymentID = () => `PAY-${Math.floor(100000 + Math.random() * 900000)}`;
-export const generateReceiptID = () => `REC-${Math.floor(100000 + Math.random() * 900000)}`;
-
-const INITIAL_USERS: User[] = [
-  {
-    uid: 'admin-uid',
-    email: 'admin@gmail.com',
-    displayName: 'Master Administrator',
-    role: UserRole.MASTER_ADMIN,
-    authStatus: AuthStatus.ACTIVE,
-    profileStatus: ProfileStatus.COMPLETED,
-    status: UserStatus.APPROVED,
-    mobile: '9999999999',
-    profileCompleted: true,
-    createdAt: Date.now() - 86400000 * 30,
-    location: { address: 'Main Hub', city: 'Mumbai', state: 'MH', pincode: '400001' }
-  },
-  {
-    uid: 'sales-uid',
-    email: 'sales@gmail.com',
-    displayName: 'Sales Representative',
-    role: UserRole.SALES,
-    authStatus: AuthStatus.ACTIVE,
-    profileStatus: ProfileStatus.COMPLETED,
-    status: UserStatus.APPROVED,
-    mobile: '8888888888',
-    profileCompleted: true,
-    createdAt: Date.now() - 86400000 * 20,
-    location: { address: 'East Wing', city: 'Mumbai', state: 'MH', pincode: '400002' }
-  },
-  {
-    uid: 'ops-uid',
-    email: 'ops@gmail.com',
-    displayName: 'Operations Manager',
-    role: UserRole.OPERATIONS,
-    authStatus: AuthStatus.ACTIVE,
-    profileStatus: ProfileStatus.COMPLETED,
-    status: UserStatus.APPROVED,
-    mobile: '7777777777',
-    profileCompleted: true,
-    createdAt: Date.now() - 86400000 * 10,
-    location: { address: 'West Wing', city: 'Pune', state: 'MH', pincode: '411001' }
-  },
-  {
-    uid: 'pending-user-uid',
-    email: 'user1@gmail.com',
-    displayName: 'New Applicant',
-    role: UserRole.SALES,
-    authStatus: AuthStatus.UNVERIFIED,
-    profileStatus: ProfileStatus.NOT_STARTED,
-    status: UserStatus.PENDING,
-    mobile: '6666666666',
-    profileCompleted: false,
-    createdAt: Date.now()
-  }
-];
+export const PLAN_RATES: Record<PlanType, number> = {
+  [PlanType.SILVER]: 2500,
+  [PlanType.GOLD]: 4000,
+  [PlanType.PLATINUM]: 6000
+};
 
 export const MOCK_DB = {
-  users: [...INITIAL_USERS] as User[],
-  leads: [] as Lead[],
-  customers: [] as Customer[],
+  users: [
+    {
+      uid: 'ADM-001',
+      email: 'admin@gmail.com',
+      password: 'admin123',
+      role: UserRole.ADMIN,
+      displayName: 'System Admin',
+      status: UserStatus.APPROVED,
+      isProfileComplete: true,
+      createdAt: Date.now()
+    },
+    {
+      uid: 'SAL-001',
+      email: 'sales@gmail.com',
+      password: 'sales123',
+      role: UserRole.SALES,
+      displayName: 'Sales Associate',
+      status: UserStatus.APPROVED,
+      isProfileComplete: true,
+      createdAt: Date.now()
+    },
+    {
+      uid: 'OPS-001',
+      email: 'ops@gmail.com',
+      password: 'ops123',
+      role: UserRole.OPS,
+      displayName: 'Operations Lead',
+      status: UserStatus.APPROVED,
+      isProfileComplete: true,
+      createdAt: Date.now()
+    }
+  ] as any[],
   
-  addUser: (user: User) => {
-    MOCK_DB.users.push(user);
+  leads: [] as any[],
+  customers: [] as Customer[],
+  orders: [] as any[],
+  payments: [] as any[],
+
+  createLead: (data: any) => {
+    const lead = {
+      id: `LEAD-${Math.floor(Math.random() * 10000)}`,
+      ...data,
+      status: LeadStatus.NEW,
+      createdAt: Date.now(),
+      potentialValue: data.potentialValue || 0,
+      priority: data.priority || LeadPriority.MEDIUM,
+      panelCount: data.panelCount || 0
+    };
+    MOCK_DB.leads.push(lead);
+    return lead;
   },
 
-  approveUser: (uid: string) => {
-    const user = MOCK_DB.users.find(u => u.uid === uid);
-    if (user) {
-      user.authStatus = AuthStatus.ACTIVE;
-      user.status = UserStatus.APPROVED;
-      user.approvedAt = Date.now();
-    }
-  },
-
-  updateUser: (uid: string, data: Partial<User>) => {
-    const user = MOCK_DB.users.find(u => u.uid === uid);
-    if (user) {
-      Object.assign(user, data);
-      if (data.profileStatus === ProfileStatus.COMPLETED) {
-        user.profileCompleted = true;
-      }
-    }
-  },
-
-  // Added updateCustomer to fix missing property errors in customer service
-  updateCustomer: (id: string, data: Partial<Customer>, userId?: string, userName?: string) => {
-    const customer = MOCK_DB.customers.find(c => c.id === id);
-    if (customer) {
-      Object.assign(customer, data);
-    }
-  },
-
-  createEntity: (form: any, type: string, currentUser: User) => {
-    const id = generateUniqueSystemID();
-    if (type === 'LEAD') {
-      const newLead: Lead = {
-        id, name: form.name, companyName: form.companyName || 'Individual',
-        phone: form.mobile, email: form.email, source: form.source || LeadSource.MANUAL,
-        status: LeadStatus.NEW, priority: LeadPriority.MEDIUM, salesUserId: currentUser.uid,
-        potentialValue: form.billingAmount || 0, createdAt: Date.now(),
-        location: form.address, notes: form.notes
-      };
-      MOCK_DB.leads.push(newLead);
-    } else if (type === 'USER') {
-      const newUser: User = {
-        uid: id, email: form.email, role: form.role || UserRole.USER,
-        authStatus: AuthStatus.UNVERIFIED,
-        profileStatus: ProfileStatus.NOT_STARTED,
-        status: UserStatus.PENDING, displayName: form.name, mobile: form.mobile,
-        profileCompleted: false, location: form.address, createdAt: Date.now()
-      };
-      MOCK_DB.addUser(newUser);
-    }
-    return id;
-  },
-
+  // Added for services/customer.service.ts
   convertLead: (leadId: string, data: any) => {
-    const leadIndex = MOCK_DB.leads.findIndex(l => l.id === leadId);
-    if (leadIndex === -1) return null;
-    const lead = MOCK_DB.leads[leadIndex];
-    const customerId = `cust-${lead.id}`;
+    const lead = MOCK_DB.leads.find(l => l.id === leadId);
+    if (!lead) return null;
     
-    const customerData: Customer = {
-      id: customerId,
+    lead.status = LeadStatus.CONVERTED;
+    
+    const customer = MOCK_DB.createCustomer({
       name: lead.name,
       companyName: lead.companyName,
       phone: lead.phone,
-      email: lead.email || '',
-      location: typeof lead.location === 'object' ? lead.location : { address: lead.location || '', city: '', state: '', pincode: '' },
-      salesId: data.userId,
-      opsId: 'PENDING',
-      status: CustomerStatus.CONVERTING,
-      opsStatus: OpsStatus.PENDING,
-      workStatus: WorkStatus.ASSIGNED,
-      executionStage: ExecutionStage.PLANNING,
-      billingAmount: data.billingAmount,
-      advanceCollected: data.advanceRequired,
-      gstApplied: data.gstApplied,
-      conversionAt: Date.now(),
-      conversionDeadline: Date.now() + (72 * 60 * 60 * 1000),
-      createdFromLeadId: lead.id,
-      activityLogs: [], receipts: [], invoices: [], payments: [], tasks: []
-    };
+      email: lead.email,
+      city: lead.location,
+      plantCapacity: lead.panelCount * 0.5 || 5,
+      selectedPlan: PlanType.SILVER,
+      discount: 0
+    }, data.userId);
+
+    if (data.billingAmount) {
+      customer.billingAmount = data.billingAmount;
+      customer.finalPrice = data.billingAmount;
+    }
     
-    MOCK_DB.customers.push(customerData);
-    MOCK_DB.leads[leadIndex].status = LeadStatus.CONVERTED;
-    return customerId;
+    return customer.id;
   },
 
-  recordPayment: (customerId: string, data: any, creator: User) => {
-    const cust = MOCK_DB.customers.find(c => c.id === customerId);
-    if (cust) {
-      const payment = { ...data, id: generatePaymentID(), createdAt: Date.now(), createdBy: creator.uid, createdByName: creator.displayName };
-      cust.payments.push(payment);
+  // Added for pages/UniversalAddPage.tsx
+  convertLeadToOrder: (leadId: string, panelCount: number, serviceDate: number, cleaner: string) => {
+    const lead = MOCK_DB.leads.find(l => l.id === leadId);
+    if (lead) {
+      lead.status = 'Converted';
+      const order = {
+        id: `ORD-${Math.floor(Math.random() * 10000)}`,
+        leadId,
+        clientName: lead.name,
+        panelCount,
+        serviceDate,
+        assignedCleaner: cleaner,
+        status: OrderStatus.SCHEDULED,
+        createdAt: Date.now()
+      };
+      MOCK_DB.orders.push(order);
+      return order;
+    }
+  },
+
+  recordPayment: (customerId: string, invoiceId: string, amount: number, mode: PaymentMode, reference: string, creator: User) => {
+    const customer = MOCK_DB.customers.find(c => c.id === customerId);
+    if (customer) {
+      const payment = {
+        id: `PAY-${Math.floor(Math.random() * 10000)}`,
+        amount,
+        mode,
+        reference,
+        invoiceId,
+        clientName: customer.name,
+        orderId: customer.customerId,
+        status: PaymentStatus.PAID,
+        createdAt: Date.now()
+      };
+      customer.payments.push(payment);
+      MOCK_DB.payments.push(payment); // Ensure global registry is updated
+      customer.timeline.push({
+        action: 'PAYMENT_RECORDED',
+        remarks: `Payment of ₹${amount.toLocaleString()} recorded. Total Settled: ₹${customer.payments.reduce((acc, p) => acc + p.amount, 0).toLocaleString()}`,
+        userName: creator.displayName,
+        timestamp: Date.now()
+      });
       return payment;
     }
   },
 
-  completeTask: (customerId: string, taskId: string, proofs: string[], creator: User) => {
-    const cust = MOCK_DB.customers.find(c => c.id === customerId);
-    if (cust) {
-      const task = cust.tasks.find(t => t.id === taskId);
-      if (task) {
-        task.status = 'COMPLETED';
-        task.completedAt = Date.now();
-        task.proofs = proofs.map(url => ({ url, uploadedAt: Date.now() }));
-        return true;
+  createCustomer: (form: any, creatorUid: string) => {
+    const rate = PLAN_RATES[form.selectedPlan as PlanType] || 0;
+    const basePrice = form.plantCapacity * rate;
+    const finalPrice = basePrice - (form.discount || 0);
+
+    const customer: Customer = {
+      id: `CUST-${Math.floor(Math.random() * 10000)}`,
+      customerId: `ID-${Math.floor(Math.random() * 10000)}`,
+      name: form.name,
+      companyName: form.companyName,
+      phone: form.phone,
+      email: form.email,
+      address: form.city || '',
+      plantCapacity: form.plantCapacity,
+      selectedPlan: form.selectedPlan,
+      discount: form.discount || 0,
+      finalPrice: finalPrice,
+      status: CustomerStatus.PENDING_APPROVAL,
+      createdBy: creatorUid,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      timeline: [{
+        action: 'CREATED',
+        remarks: 'Sales Protocol Initiated. Customer node pending Admin authorization.',
+        userName: 'Sales System',
+        timestamp: Date.now()
+      }],
+      salesId: creatorUid,
+      opsId: 'PENDING',
+      workStatus: WorkStatus.ASSIGNED,
+      executionStage: ExecutionStage.PLANNING,
+      conversionDeadline: Date.now() + (72 * 60 * 60 * 1000),
+      invoices: [],
+      payments: [],
+      panelCount: form.plantCapacity * 2,
+      billingAmount: finalPrice
+    };
+    MOCK_DB.customers.push(customer);
+    return customer;
+  },
+
+  approveCustomer: (customerId: string, adminUser: User) => {
+    const customer = MOCK_DB.customers.find(c => c.id === customerId);
+    if (customer) {
+      customer.status = CustomerStatus.APPROVED;
+      customer.updatedAt = Date.now();
+      customer.timeline.push({
+        action: 'APPROVED',
+        remarks: 'Admin Authorization Granted. Project locked for Sales editing.',
+        userName: adminUser.displayName,
+        timestamp: Date.now()
+      });
+    }
+  },
+
+  // Added for pages/ProjectDetailsPage.tsx
+  rejectCustomer: (customerId: string, adminUser: User, reason: string) => {
+    const customer = MOCK_DB.customers.find(c => c.id === customerId);
+    if (customer) {
+      customer.status = CustomerStatus.REJECTED;
+      customer.rejectionReason = reason;
+      customer.timeline.push({
+        action: 'REJECTED',
+        remarks: `Node rejected: ${reason}`,
+        userName: adminUser.displayName,
+        timestamp: Date.now()
+      });
+    }
+  },
+
+  assignOps: (customerId: string, opsUserId: string) => {
+    const customer = MOCK_DB.customers.find(c => c.id === customerId);
+    const opsUser = MOCK_DB.users.find(u => u.uid === opsUserId);
+    if (customer && opsUser) {
+      customer.opsId = opsUserId;
+      customer.assignedOps = opsUserId;
+      customer.status = CustomerStatus.TRANSFERRED_TO_OPS;
+      customer.workStatus = WorkStatus.ACCEPTED;
+      customer.timeline.push({
+        action: 'TRANSFERRED',
+        remarks: `Handoff Successful. Ownership transferred to Ops Specialist: ${opsUser.displayName}`,
+        userName: 'Sales Handoff',
+        timestamp: Date.now()
+      });
+    }
+  },
+
+  updateWorkStatus: (customerId: string, status: WorkStatus, userName: string) => {
+    const customer = MOCK_DB.customers.find(c => c.id === customerId);
+    if (customer) {
+      customer.workStatus = status;
+      if (status === WorkStatus.COMPLETED) {
+        customer.executionStage = ExecutionStage.COMPLETED;
+        customer.status = CustomerStatus.COMPLETED;
+      } else {
+        customer.executionStage = ExecutionStage.EXECUTION;
       }
+      customer.timeline.push({
+        action: 'WORK_STATUS_UPDATE',
+        remarks: `Project lifecycle updated to ${status} by assigned specialist.`,
+        userName,
+        timestamp: Date.now()
+      });
+    }
+  },
+
+  // Added for services/customer.service.ts
+  completeTask: (customerId: string, taskId: string, proofs: string[], creator: User) => {
+    const customer = MOCK_DB.customers.find(c => c.id === customerId);
+    if (customer) {
+      customer.timeline.push({
+        action: 'TASK_COMPLETED',
+        remarks: `Task ${taskId} verified with ${proofs.length} attachments.`,
+        userName: creator.displayName,
+        timestamp: Date.now()
+      });
+      return true;
     }
     return false;
   },
 
-  addActivityLog: (customerId: string, log: any) => {
-    const cust = MOCK_DB.customers.find(c => c.id === customerId);
-    if (cust) cust.activityLogs.unshift({ ...log, id: `log-${Date.now()}`, createdAt: Date.now() });
+  addPayment: (customerId: string, amount: number, mode: PaymentMode, reference: string, userName: string) => {
+    const customer = MOCK_DB.customers.find(c => c.id === customerId);
+    if (customer) {
+      const payment = {
+        id: `PAY-${Math.floor(Math.random() * 10000)}`,
+        amount,
+        mode,
+        reference,
+        clientName: customer.name,
+        orderId: customer.customerId,
+        status: PaymentStatus.PAID,
+        createdAt: Date.now()
+      };
+      customer.payments.push(payment);
+      MOCK_DB.payments.push(payment); // Update global registry
+      customer.timeline.push({
+        action: 'PAYMENT_RECORDED',
+        remarks: `Financial Settlement: ₹${amount.toLocaleString()} received via ${mode}.`,
+        userName,
+        timestamp: Date.now()
+      });
+    }
   },
 
-  checkDeadlines: () => {
-    const now = Date.now();
-    MOCK_DB.customers.forEach(c => {
-      if (c.status === CustomerStatus.CONVERTING && now > c.conversionDeadline) {
-        c.status = CustomerStatus.EXPIRED;
-      }
-    });
-  }
+  // Added for services/customer.service.ts
+  addActivityLog: (customerId: string, log: any) => {
+    const customer = MOCK_DB.customers.find(c => c.id === customerId);
+    if (customer) {
+      customer.timeline.push({
+        action: log.action,
+        remarks: log.note,
+        userName: log.userName,
+        timestamp: Date.now()
+      });
+    }
+  },
+
+  updateCustomer: (customerId: string, data: Partial<Customer>, userId: string, userName: string) => {
+    const customer = MOCK_DB.customers.find(c => c.id === customerId);
+    if (customer) {
+      Object.assign(customer, data);
+      customer.updatedAt = Date.now();
+    }
+  },
+
+  // Added for pages/OrdersPage.tsx
+  updateOrderStatus: (orderId: string, status: OrderStatus) => {
+    const order = MOCK_DB.orders.find(o => o.id === orderId);
+    if (order) order.status = status;
+  },
+
+  // Added for pages/PaymentsPage.tsx
+  updatePaymentStatus: (paymentId: string, status: PaymentStatus) => {
+    const payment = MOCK_DB.payments.find(p => p.id === paymentId);
+    if (payment) payment.status = status;
+  },
+
+  approveUser: (uid: string) => {
+    const user = MOCK_DB.users.find(u => u.uid === uid);
+    if (user) user.status = UserStatus.APPROVED;
+  },
+
+  updateUser: (uid: string, data: Partial<User>) => {
+    const user = MOCK_DB.users.find(u => u.uid === uid);
+    if (user) Object.assign(user, data);
+  },
+
+  checkDeadlines: () => {}
 };

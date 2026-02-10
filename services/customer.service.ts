@@ -3,7 +3,7 @@ import { ENV } from '../config/env';
 import { db } from '../config/firebase';
 import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
 import { MOCK_DB } from '../data/mockDb';
-import { Customer, Location, OpsStatus, WorkStatus, InvoiceType, Invoice, ExecutionStage, PaymentMode, User } from '../types';
+import { Customer, OpsStatus, WorkStatus, InvoiceStatus, Invoice, ExecutionStage, PaymentMode, User } from '../types';
 
 export const customerService = {
   getCustomers: async (userId?: string, role?: string) => {
@@ -26,9 +26,9 @@ export const customerService = {
     return MOCK_DB.customers;
   },
 
-  recordPayment: async (customerId: string, data: { amount: number, type: InvoiceType, mode: PaymentMode, notes?: string }, creator: User) => {
+  recordPayment: async (customerId: string, data: { amount: number, invoiceId: string, mode: PaymentMode, reference: string }, creator: User) => {
     if (ENV.USE_FIREBASE) return null;
-    return MOCK_DB.recordPayment(customerId, data, creator);
+    return MOCK_DB.recordPayment(customerId, data.invoiceId, data.amount, data.mode, data.reference, creator);
   },
 
   completeTask: async (customerId: string, taskId: string, proofs: string[], creator: User) => {
@@ -37,13 +37,11 @@ export const customerService = {
   },
 
   convertLead: async (leadId: string, data: { 
-    location: Location; 
-    email: string; 
-    phone: string; 
     userId: string; 
     userName: string;
-    gstNumber?: string;
-    industry?: string;
+    billingAmount?: number;
+    gstApplied?: boolean;
+    advanceRequired?: number;
   }) => {
     if (ENV.USE_FIREBASE) return null;
     return MOCK_DB.convertLead(leadId, data);
@@ -60,7 +58,7 @@ export const customerService = {
       ? { opsStatus: OpsStatus.ACCEPTED, workStatus: WorkStatus.ACCEPTED } 
       : { opsStatus: OpsStatus.REJECTED, rejectionReason: reason };
     
-    MOCK_DB.updateCustomer(customerId, update, userId, userName);
+    MOCK_DB.updateCustomer(customerId, update as any, userId, userName);
     MOCK_DB.addActivityLog(customerId, {
       action: action === 'ACCEPT' ? 'OPS_ACCEPTED' : 'OPS_REJECTED',
       note: action === 'ACCEPT' ? `Task accepted by ${userName}` : `Task rejected by ${userName}. Reason: ${reason}`,

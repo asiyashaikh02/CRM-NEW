@@ -1,12 +1,12 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Synckraft CRM</title>
+    <title>Synckraft Technologies | Building Scalable Digital Ventures</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -14,36 +14,30 @@
                 extend: {
                     fontFamily: {
                         inter: ['Inter', 'sans-serif'],
+                        grotesk: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            blue: '#2563EB',
+                            dark: '#1E40AF',
+                            accent: '#38BDF8',
+                            text: '#0F172A',
+                            muted: '#64748B',
+                            border: '#E2E8F0',
+                        }
                     },
                     animation: {
-                        'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
-                        'progress': 'progress 2.5s ease-out forwards',
-                        'slide-down': 'slideDown 0.3s ease-out forwards',
-                        'fade-in': 'fadeIn 0.5s ease-out forwards',
-                        'bounce-subtle': 'bounceSubtle 2s infinite',
+                        'fade-up': 'fadeUp 0.8s cubic-bezier(0.2, 0, 0, 1) forwards',
+                        'float': 'float 6s ease-in-out infinite',
                     },
                     keyframes: {
-                        shake: {
-                            '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' },
-                            '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
-                            '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' },
-                            '40%, 60%': { transform: 'translate3d(4px, 0, 0)' },
-                        },
-                        progress: {
-                            '0%': { width: '0%' },
-                            '100%': { width: '100%' },
-                        },
-                        slideDown: {
-                            '0%': { opacity: '0', transform: 'translateY(-10px)' },
+                        fadeUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
                             '100%': { opacity: '1', transform: 'translateY(0)' }
                         },
-                        fadeIn: {
-                            '0%': { opacity: '0', transform: 'translateY(10px)' },
-                            '100%': { opacity: '1', transform: 'translateY(0)' }
-                        },
-                        bounceSubtle: {
+                        float: {
                             '0%, 100%': { transform: 'translateY(0)' },
-                            '50%': { transform: 'translateY(-5px)' }
+                            '50%': { transform: 'translateY(-20px)' }
                         }
                     }
                 }
@@ -53,25 +47,22 @@
     <style>
         body { 
             font-family: 'Inter', sans-serif;
-            transition: background-color 0.3s ease, color 0.3s ease;
+            -webkit-font-smoothing: antialiased;
         }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .dark ::-webkit-scrollbar-thumb { background: #475569; }
-        
-        .glass-morphism {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .text-balance { text-wrap: balance; }
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid #E2E8F0;
         }
-        .dark .glass-morphism {
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+        .section-reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        
-        .sidebar-transition {
-            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        .section-reveal.active {
+            opacity: 1;
+            transform: translateY(0);
         }
     </style>
 <script type="importmap">
@@ -80,16 +71,17 @@
     "react/": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "firebase/": "https://esm.sh/firebase@^12.8.0/",
     "recharts": "https://esm.sh/recharts@^3.7.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.475.0",
     "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
-    "firebase-functions/": "https://esm.sh/firebase-functions@^7.0.3/",
-    "firebase-admin/": "https://esm.sh/firebase-admin@^13.6.0/"
+    "firebase-functions/": "https://esm.sh/firebase-functions@^7.0.5/",
+    "firebase-admin/": "https://esm.sh/firebase-admin@^13.6.0/",
+    "firebase/": "https://esm.sh/firebase@^12.8.0/"
   }
 }
 </script>
 </head>
-<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+<body class="bg-white text-brand-text selection:bg-brand-blue/10 selection:text-brand-blue">
     <div id="root"></div>
 </body>
 </html>

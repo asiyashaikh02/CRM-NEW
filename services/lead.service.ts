@@ -14,7 +14,7 @@ export const leadService = {
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
     
-    // Fixed usage of MOCK_DATA to MOCK_DB
+    // Fixed usage of MOCK_DB registry
     if (userId) return MOCK_DB.leads.filter(l => l.salesUserId === userId);
     return MOCK_DB.leads;
   }

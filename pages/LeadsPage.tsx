@@ -1,72 +1,121 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { MOCK_DB } from '../data/mockDb';
-import { Icons } from '../constants';
-import { LeadStatus, LeadSource, LeadPriority } from '../types';
-import { formatCurrency } from '../config/appConfig';
-import { RoutePath } from '../App';
+import { UserRole, RoutePath, LeadStatus, LeadPriority } from '../types';
+import { Plus, Target, Mail, Phone, MapPin, ChevronRight, Edit3 } from 'lucide-react';
+import { useAuthContext } from '../context/AuthContext';
 
-export const LeadsPage: React.FC<{ params?: any, onNavigate: (path: RoutePath, params?: any) => void }> = ({ params, onNavigate }) => {
-  const [activeTab, setActiveTab] = useState<'ALL' | 'NETWORK' | 'CONVERTED'>(params?.source === 'network' ? 'NETWORK' : 'ALL');
-  const [search, setSearch] = useState('');
+export const LeadsPage: React.FC<{ onNavigate: (path: RoutePath, id?: string) => void, selectedId?: string }> = ({ onNavigate, selectedId }) => {
+  const { currentUser } = useAuthContext();
+  const lead = selectedId ? MOCK_DB.leads.find(l => l.id === selectedId) : null;
+  const canEdit = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SALES;
 
-  const filteredLeads = useMemo(() => {
-    let list = MOCK_DB.leads;
-    if (activeTab === 'NETWORK') list = list.filter(l => l.source === 'network' || l.source === LeadSource.WEBSITE);
-    if (activeTab === 'CONVERTED') list = list.filter(l => l.status === LeadStatus.CONVERTED);
-    
-    if (search) {
-      const s = search.toLowerCase();
-      list = list.filter(l => l.companyName.toLowerCase().includes(s) || l.name.toLowerCase().includes(s));
-    }
-    return list;
-  }, [activeTab, search]);
+  if (selectedId && lead) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-10 animate-fade-in text-left">
+        <header className="flex justify-between items-end">
+          <div>
+            <h2 className="text-4xl font-black tracking-tighter text-slate-900">{lead.name}</h2>
+            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-2">{lead.companyName}</p>
+          </div>
+          <div className="flex gap-3">
+             <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase border tracking-widest ${lead.status === LeadStatus.CONVERTED ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-blue/5 text-brand-blue'}`}>
+               {lead.status}
+             </span>
+          </div>
+        </header>
 
-  return (
-    <div className="space-y-12 text-left animate-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div>
-          <h2 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">Leads Registry</h2>
-          <p className="text-slate-400 dark:text-slate-500 font-bold mt-2 uppercase text-xs tracking-[0.3em]">Pipeline Management Node</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+              <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Contact Identity</h4>
+              <div className="space-y-4">
+                 <div className="flex items-center gap-4 text-slate-600"><Mail size={16}/><span className="text-sm font-bold">{lead.email || 'No email registered'}</span></div>
+                 <div className="flex items-center gap-4 text-slate-600"><Phone size={16}/><span className="text-sm font-bold">{lead.phone}</span></div>
+                 <div className="flex items-center gap-4 text-slate-600"><MapPin size={16}/><span className="text-sm font-bold">{lead.location}</span></div>
+              </div>
+           </div>
+           
+           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+              <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Dossier Intelligence</h4>
+              <div className="grid grid-cols-2 gap-6">
+                 <div>
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Priority</p>
+                    <p className={`text-sm font-black ${lead.priority === LeadPriority.HIGH ? 'text-rose-500' : 'text-slate-900'}`}>{lead.priority}</p>
+                 </div>
+                 <div>
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Potential Yield</p>
+                    <p className="text-sm font-black text-slate-900">₹{lead.potentialValue.toLocaleString()}</p>
+                 </div>
+              </div>
+           </div>
         </div>
-        <div className="flex bg-white dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-           <TabBtn label="All Signal" active={activeTab === 'ALL'} onClick={() => setActiveTab('ALL')} />
-           <TabBtn label="Network Only" active={activeTab === 'NETWORK'} onClick={() => setActiveTab('NETWORK')} />
-           <TabBtn label="Converted Assets" active={activeTab === 'CONVERTED'} onClick={() => setActiveTab('CONVERTED')} />
+
+        <div className="bg-slate-900 p-10 rounded-[3rem] text-white">
+           <h3 className="text-xl font-bold mb-6">Operations Log</h3>
+           <p className="text-slate-400 text-sm leading-relaxed italic">"{lead.notes || 'No contextual intelligence logged for this lead node.'}"</p>
+           {canEdit && (
+             <button className="mt-8 flex items-center gap-2 text-brand-blue text-xs font-black uppercase tracking-widest hover:text-white transition-colors">
+               <Edit3 size={14}/> Append Intelligence
+             </button>
+           )}
         </div>
       </div>
+    );
+  }
 
-      <div className="bg-white dark:bg-slate-900 p-8 rounded-[3.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="mb-8 relative max-w-md">
-           <input type="text" placeholder="Search company or contact..." value={search} onChange={e => setSearch(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl p-4 pl-12 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-600 transition-all" />
-           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><Icons.Leads /></div>
+  return (
+    <div className="space-y-8 animate-fade-in text-left">
+      <div className="flex justify-between items-end">
+        <div>
+          <h2 className="text-4xl font-black tracking-tighter">Leads Registry</h2>
+          <p className="text-slate-400 font-bold uppercase text-[9px] tracking-widest mt-1">Pipeline Telemetry</p>
         </div>
+        {canEdit && (
+          <button onClick={() => onNavigate('add')} className="bg-brand-blue text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 hover:bg-brand-dark">
+            <Plus size={16} /> New Lead
+          </button>
+        )}
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-           {filteredLeads.length === 0 ? (
-             <div className="col-span-full py-20 text-center text-slate-400 italic font-bold">No leads matching current telemetry signals.</div>
-           ) : (
-             filteredLeads.map(l => (
-               <div key={l.id} className="bg-slate-50 dark:bg-slate-950 p-8 rounded-[3rem] border border-slate-100 dark:border-slate-800 hover:border-indigo-200 transition-all group">
-                 <div className="flex justify-between items-start mb-6">
-                    <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">🌐</div>
-                    <span className={`text-[8px] font-black px-2 py-1 rounded uppercase tracking-widest border ${l.priority === LeadPriority.HIGH ? 'bg-rose-50 text-rose-500' : 'bg-white text-slate-400'}`}>{l.priority}</span>
-                 </div>
-                 <h4 className="text-xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">{l.companyName}</h4>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">{l.name} • {l.source}</p>
-                 <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                    <p className="text-2xl font-black text-indigo-600">{formatCurrency(l.potentialValue)}</p>
-                    <button className="p-3 bg-white dark:bg-slate-900 rounded-xl text-slate-400 hover:text-indigo-600 transition-colors shadow-sm"><Icons.Sparkles /></button>
-                 </div>
-               </div>
-             ))
-           )}
+      <div className="bg-white rounded-[3rem] border border-slate-200 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Entity</th>
+                <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Contact</th>
+                <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Source</th>
+                <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
+                <th className="px-8 py-5"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {MOCK_DB.leads.map(lead => (
+                <tr 
+                  key={lead.id} 
+                  onClick={() => onNavigate('lead-detail', lead.id)}
+                  className="hover:bg-slate-50 transition-colors group cursor-pointer"
+                >
+                  <td className="px-8 py-5">
+                    <p className="font-bold text-slate-900">{lead.name}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{lead.companyName}</p>
+                  </td>
+                  <td className="px-8 py-5 text-sm text-slate-600 font-medium">{lead.phone}</td>
+                  <td className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">{lead.source}</td>
+                  <td className="px-8 py-5">
+                    <span className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border tracking-widest ${lead.status === LeadStatus.CONVERTED ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-blue/5 text-brand-blue'}`}>
+                      {lead.status}
+                    </span>
+                  </td>
+                  <td className="px-8 py-5 text-right">
+                    <ChevronRight className="inline-block text-slate-300 group-hover:text-brand-blue transition-colors" size={18}/>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
 };
-
-const TabBtn = ({ label, active, onClick }: any) => (
-  <button onClick={onClick} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${active ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>{label}</button>
-);

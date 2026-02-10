@@ -2,9 +2,9 @@
 import React, { useMemo, useState } from 'react';
 import { MOCK_DB } from '../data/mockDb';
 import { Icons } from '../constants';
-import { LeadStatus, LeadPriority } from '../types';
+// Fixed: RoutePath should be imported from types, not App
+import { LeadStatus, LeadPriority, RoutePath } from '../types';
 import { formatCurrency } from '../config/appConfig';
-import { RoutePath } from '../App';
 import { useAuthContext } from '../context/AuthContext';
 
 export const LeadDetailsPage: React.FC<{ id: string, onNavigate: (path: RoutePath, params?: any) => void }> = ({ id, onNavigate }) => {
@@ -27,14 +27,14 @@ export const LeadDetailsPage: React.FC<{ id: string, onNavigate: (path: RoutePat
       gstApplied: convForm.gst,
       advanceRequired: (convForm.value * convForm.advance) / 100
     });
-    onNavigate('project-detail', { id: customerId });
+    if (customerId) onNavigate('project-detail' as any, { id: customerId });
   };
 
   return (
     <div className="space-y-12 text-left animate-fade-in pb-20">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
         <div>
-          <button onClick={() => onNavigate('leads')} className="text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-600 mb-4 flex items-center gap-2">
+          <button onClick={() => onNavigate('leads' as any)} className="text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-600 mb-4 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
             Signal Pipeline
           </button>
