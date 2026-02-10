@@ -39,6 +39,7 @@ export enum WorkStatus {
   ACCEPTED = 'ACCEPTED',
   REJECTED = 'REJECTED',
   IN_PROGRESS = 'IN_PROGRESS',
+  WORKING = 'WORKING', // Added for Phase 4
   COMPLETED = 'COMPLETED'
 }
 
@@ -154,7 +155,7 @@ export interface Customer {
   workStatus: WorkStatus;
   executionStage: ExecutionStage;
   conversionDeadline: number;
-  serviceDate: number; // Added for Phase 3
+  serviceDate: number;
   invoices: any[];
   payments: any[];
   assignedOps?: string;

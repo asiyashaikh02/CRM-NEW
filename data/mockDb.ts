@@ -104,7 +104,7 @@ export const MOCK_DB = {
       createdBy: creatorUid,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      serviceDate: form.serviceDate ? new Date(form.serviceDate).getTime() : Date.now(), // Fixed for Phase 3
+      serviceDate: form.serviceDate ? new Date(form.serviceDate).getTime() : Date.now(),
       timeline: [{
         action: 'CREATED',
         remarks: 'Sales Draft initialized. 72-hour conversion window activated.',
@@ -174,10 +174,10 @@ export const MOCK_DB = {
       customer.opsId = opsUserId;
       customer.assignedOps = opsUserId;
       customer.status = CustomerStatus.TRANSFERRED_TO_OPS;
-      customer.workStatus = WorkStatus.ACCEPTED;
+      customer.workStatus = WorkStatus.ASSIGNED; // Force back to ASSIGNED for acceptance flow
       customer.timeline.push({
         action: 'TRANSFERRED',
-        remarks: `Handoff Successful. Ownership transferred to Ops Specialist: ${opsUser.displayName}`,
+        remarks: `Handoff Successful. Ownership transferred to Ops Specialist: ${opsUser.displayName}. Waiting for acceptance.`,
         userName: 'Sales Handoff',
         timestamp: Date.now()
       });
@@ -203,7 +203,7 @@ export const MOCK_DB = {
     }
   },
 
-  addPayment: (customerId: string, amount: number, mode: PaymentMode, reference: string, userName: string) => {
+  addPayment: (customerId: string, amount: number, mode: PaymentMode, reference: string, userName: string, proofUrl?: string) => {
     const customer = MOCK_DB.customers.find(c => c.id === customerId);
     if (customer) {
       const payment = {
@@ -211,6 +211,7 @@ export const MOCK_DB = {
         amount,
         mode,
         reference,
+        proof: proofUrl || 'LOCAL_SIMULATED_PROOF_REF',
         clientName: customer.name,
         orderId: customer.customerId,
         status: PaymentStatus.PAID,
@@ -220,7 +221,7 @@ export const MOCK_DB = {
       MOCK_DB.payments.push(payment);
       customer.timeline.push({
         action: 'PAYMENT_RECORDED',
-        remarks: `Financial Settlement: ₹${amount.toLocaleString()} received via ${mode}.`,
+        remarks: `Financial Settlement Confirmed: ₹${amount.toLocaleString()} via ${mode}. Proof logged by ${userName}.`,
         userName,
         timestamp: Date.now()
       });
@@ -261,16 +262,13 @@ export const MOCK_DB = {
     });
   },
 
-  recordPayment: (customerId: string, invoiceId: string, amount: number, mode: PaymentMode, reference: string, creator: User) => {
-    return MOCK_DB.addPayment(customerId, amount, mode, reference, creator.displayName);
-  },
-
+  // Fix: Adding missing methods for customerService
   completeTask: (customerId: string, taskId: string, proofs: string[], creator: User) => {
     const customer = MOCK_DB.customers.find(c => c.id === customerId);
     if (customer) {
       customer.timeline.push({
         action: 'TASK_COMPLETED',
-        remarks: `Verification Signal: Task ${taskId} processed with ${proofs.length} proof nodes.`,
+        remarks: `Task ${taskId} completed. Proofs logged: ${proofs.join(', ')}`,
         userName: creator.displayName,
         timestamp: Date.now()
       });
@@ -279,92 +277,77 @@ export const MOCK_DB = {
     return false;
   },
 
+  // Fix: Adding missing convertLead method for customerService and LeadDetailsPage
   convertLead: (leadId: string, data: any) => {
     const lead = MOCK_DB.leads.find(l => l.id === leadId);
-    if (!lead) return null;
-
-    const billingAmount = data.billingAmount || lead.potentialValue;
-    
-    const customer: Customer = {
-      id: `CUST-${Math.floor(Math.random() * 10000)}`,
-      customerId: `ID-${Math.floor(Math.random() * 10000)}`,
-      name: lead.name,
-      companyName: lead.companyName,
-      phone: lead.phone,
-      email: lead.email || '',
-      address: lead.location || '',
-      city: lead.city || '',
-      lat: lead.lat || 0,
-      lng: lead.lng || 0,
-      plantCapacity: (lead.panelCount || 0) * 0.5,
-      selectedPlan: PlanType.SILVER,
-      discount: 0,
-      finalPrice: billingAmount,
-      status: CustomerStatus.DRAFT,
-      createdBy: data.userId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      serviceDate: Date.now(),
-      timeline: [{
-        action: 'CONVERTED',
-        remarks: 'Lead conversion synchronized. Drafting node initialized.',
-        userName: data.userName,
-        timestamp: Date.now()
-      }],
-      salesId: data.userId,
-      opsId: 'PENDING',
-      workStatus: WorkStatus.ASSIGNED,
-      executionStage: ExecutionStage.PLANNING,
-      conversionDeadline: Date.now() + (72 * 60 * 60 * 1000),
-      invoices: [],
-      payments: [],
-      panelCount: lead.panelCount || 0,
-      billingAmount: billingAmount
-    };
-
-    lead.status = LeadStatus.CONVERTED;
-    MOCK_DB.customers.push(customer);
-    return customer.id;
+    if (lead) {
+      const customer = MOCK_DB.createCustomer({
+        name: lead.name,
+        companyName: lead.companyName,
+        phone: lead.phone,
+        email: lead.email,
+        city: lead.city,
+        plantCapacity: lead.panelCount / 2 || 1,
+        selectedPlan: PlanType.SILVER,
+        discount: 0,
+      }, data.userId);
+      
+      customer.billingAmount = data.billingAmount;
+      customer.finalPrice = data.billingAmount;
+      customer.status = CustomerStatus.DRAFT;
+      
+      lead.status = LeadStatus.CONVERTED;
+      return customer.id;
+    }
+    return null;
   },
 
-  addActivityLog: (customerId: string, log: any) => {
+  // Fix: Adding missing addActivityLog method for customerService
+  addActivityLog: (customerId: string, activity: { action: string; note: string; userId: string; userName: string }) => {
     const customer = MOCK_DB.customers.find(c => c.id === customerId);
     if (customer) {
       customer.timeline.push({
-        action: log.action,
-        remarks: log.note,
-        userName: log.userName,
+        action: activity.action,
+        remarks: activity.note,
+        userName: activity.userName,
         timestamp: Date.now()
       });
     }
   },
 
-  convertLeadToOrder: (leadId: string, panelCount: number, serviceDate: number, assignedCleaner: string) => {
+  // Fix: Adding missing convertLeadToOrder method for UniversalAddPage
+  convertLeadToOrder: (leadId: string, panelCount: number, serviceDate: number, cleaner: string) => {
     const lead = MOCK_DB.leads.find(l => l.id === leadId);
     if (lead) {
-      lead.status = LeadStatus.CONVERTED;
       const order = {
         id: `ORD-${Math.floor(Math.random() * 10000)}`,
-        clientName: lead.companyName,
+        clientName: lead.name,
+        companyName: lead.companyName,
         panelCount,
         serviceDate,
-        assignedCleaner,
-        status: OrderStatus.SCHEDULED,
-        createdAt: Date.now()
+        assignedCleaner: cleaner,
+        status: OrderStatus.SCHEDULED
       };
       MOCK_DB.orders.push(order);
+      lead.status = LeadStatus.CONVERTED;
       return order;
     }
     return null;
   },
 
+  // Fix: Adding missing updateOrderStatus method for OrdersPage
   updateOrderStatus: (orderId: string, status: OrderStatus) => {
     const order = MOCK_DB.orders.find(o => o.id === orderId);
     if (order) order.status = status;
   },
 
+  // Fix: Adding missing updatePaymentStatus method for PaymentsPage
   updatePaymentStatus: (paymentId: string, status: PaymentStatus) => {
     const payment = MOCK_DB.payments.find(p => p.id === paymentId);
     if (payment) payment.status = status;
+  },
+
+  recordPayment: (customerId: string, invoiceId: string, amount: number, mode: PaymentMode, reference: string, creator: User, proofUrl?: string) => {
+    return MOCK_DB.addPayment(customerId, amount, mode, reference, creator.displayName, proofUrl);
   }
 };

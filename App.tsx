@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AuthProvider, useAuthContext } from './context/AuthContext';
 import { UserRole, RoutePath, ViewState } from './types';
 import { AdminDashboard } from './dashboards/AdminDashboard';
@@ -26,7 +26,8 @@ import {
   Lock,
   ChevronLeft,
   Briefcase,
-  Activity
+  Activity,
+  ArrowLeft
 } from 'lucide-react';
 
 const ROLE_PERMISSIONS: Record<UserRole, RoutePath[]> = {
@@ -64,7 +65,7 @@ const LoginPage = ({ onLogin }: any) => {
         <h1 className="text-3xl font-bold font-grotesk tracking-tight text-slate-900 leading-none">Synckraft Portal</h1>
         <div className="flex items-center justify-center gap-2 mt-2">
           <Lock size={10} className="text-amber-500" />
-          <p className="text-slate-400 text-[10px] uppercase tracking-[0.3em] font-black">PHASE 3 • SALES PROTOCOL</p>
+          <p className="text-slate-400 text-[10px] uppercase tracking-[0.3em] font-black">PHASE 5 • FINAL PRODUCTION</p>
         </div>
         {error && <div className="bg-rose-50 text-rose-500 p-4 rounded-xl text-xs font-bold mt-6">{error}</div>}
         <form onSubmit={handleLogin} className="space-y-4 mt-8">
@@ -74,14 +75,6 @@ const LoginPage = ({ onLogin }: any) => {
             {loading ? 'Decrypting...' : 'Authorize Access'}
           </button>
         </form>
-        <div className="mt-8 pt-8 border-t border-slate-100">
-           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Master Credentials</p>
-           <div className="grid grid-cols-3 gap-2 mt-3">
-              <div className="text-[8px] font-bold text-slate-500 bg-slate-50 p-2 rounded-lg">admin@gmail.com</div>
-              <div className="text-[8px] font-bold text-slate-500 bg-slate-50 p-2 rounded-lg">sales@gmail.com</div>
-              <div className="text-[8px] font-bold text-slate-500 bg-slate-50 p-2 rounded-lg">ops@gmail.com</div>
-           </div>
-        </div>
       </div>
     </div>
   );
@@ -91,6 +84,19 @@ const AppContent = () => {
   const { currentUser, status, logout, login } = useAuthContext();
   const [view, setView] = useState<ViewState>({ path: 'dashboard' });
 
+  // Browser History Sync
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state) {
+        setView(event.state);
+      } else {
+        setView({ path: 'dashboard' });
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const canAccess = (path: RoutePath): boolean => {
     if (!currentUser) return false;
     const allowed = ROLE_PERMISSIONS[currentUser.role] || [];
@@ -99,7 +105,9 @@ const AppContent = () => {
 
   const navigate = (path: RoutePath, id?: string) => {
     if (canAccess(path)) {
-      setView({ path, id });
+      const newState = { path, id };
+      window.history.pushState(newState, '', `#${path}${id ? '/' + id : ''}`);
+      setView(newState);
     }
   };
 
@@ -111,8 +119,8 @@ const AppContent = () => {
       { id: 'customers', icon: <Briefcase size={18}/>, label: 'Customers', path: 'customers' as RoutePath },
       { id: 'orders', icon: <ClipboardList size={18}/>, label: 'Orders', path: 'orders' as RoutePath },
       { id: 'payments', icon: <IndianRupee size={18}/>, label: 'Payments', path: 'payments' as RoutePath },
-      { id: 'users', icon: <Users size={18}/>, label: 'Employees', path: 'users' as RoutePath },
-      { id: 'reports', icon: <Activity size={18}/>, label: 'Reports', path: 'reports' as RoutePath },
+      { id: 'users', icon: <Users size={18}/>, label: 'Personnel', path: 'users' as RoutePath },
+      { id: 'reports', icon: <Activity size={18}/>, label: 'Audit Log', path: 'reports' as RoutePath },
     ];
     return allOptions.filter(item => canAccess(item.path));
   }, [currentUser]);
@@ -138,8 +146,8 @@ const AppContent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-inter overflow-hidden">
-      <aside className="w-full md:w-64 bg-white border-r border-slate-200 p-6 flex flex-col z-40 shadow-sm shrink-0">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-inter overflow-hidden h-screen">
+      <aside className="w-full md:w-64 bg-white border-r border-slate-200 p-6 flex flex-col z-40 shadow-sm shrink-0 md:h-full overflow-y-auto">
         <div className="flex items-center gap-3 mb-10 px-2">
           <div className="w-10 h-10 bg-brand-blue rounded-xl flex items-center justify-center text-white shadow-lg"><Sun size={20} /></div>
           <span className="font-grotesk font-bold tracking-tight text-xl text-slate-900 leading-none">Synckraft</span>
@@ -149,40 +157,43 @@ const AppContent = () => {
             <button 
               key={item.id}
               onClick={() => navigate(item.path)} 
-              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all font-bold text-sm ${view.path === item.path || (view.path === `${item.path}-detail` as RoutePath) ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all font-bold text-sm ${view.path === item.path ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
             >
               {item.icon} {item.label}
             </button>
           ))}
           {canAccess('add-customer') && (
             <button onClick={() => navigate('add-customer')} className="w-full flex items-center gap-4 px-4 py-3.5 mt-4 rounded-2xl font-bold text-sm bg-brand-blue text-white shadow-xl shadow-brand-blue/20 hover:bg-brand-dark transition-all">
-              <Plus size={18}/> New Customer
+              <Plus size={18}/> New Node
             </button>
           )}
         </nav>
         <div className="pt-8 mt-8 border-t border-slate-100">
           <div className="px-4 py-3 bg-slate-50 rounded-2xl border border-slate-100">
             <p className="text-[10px] font-black text-slate-900 uppercase truncate">{currentUser.displayName}</p>
-            <p className="text-[7px] font-black text-brand-blue uppercase tracking-widest mt-1">{currentUser.role.replace('_', ' ')} PRIVILEGE</p>
+            <p className="text-[7px] font-black text-brand-blue uppercase tracking-widest mt-1">{currentUser.role.replace('_', ' ')} SECURITY</p>
           </div>
-          <button onClick={logout} className="w-full flex items-center gap-4 px-4 py-3.5 mt-4 rounded-2xl text-rose-500 hover:bg-rose-50 transition-all font-bold text-sm"><LogOut size={18}/> Sign Out</button>
+          <button onClick={logout} className="w-full flex items-center gap-4 px-4 py-3.5 mt-4 rounded-2xl text-rose-500 hover:bg-rose-50 transition-all font-bold text-sm"><LogOut size={18}/> Exit Portal</button>
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
-        <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-30">
+      <main className="flex-1 overflow-y-auto flex flex-col h-full relative">
+        <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30 shrink-0">
           <div className="flex items-center gap-4">
-            {view.id && (
-              <button onClick={() => navigate(view.path.split('-')[0] as RoutePath)} className="p-2 hover:bg-slate-50 rounded-lg text-slate-400">
-                <ChevronLeft size={20} />
+            {window.history.length > 1 && (
+              <button onClick={() => window.history.back()} className="p-2 hover:bg-slate-50 rounded-lg text-slate-400">
+                <ArrowLeft size={18} />
               </button>
             )}
-            <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{view.path.replace('-', ' ')} dossier</div>
+            <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{view.path.replace('-', ' ')} segment</div>
           </div>
-          <div className="text-[10px] font-black text-slate-900 flex items-center gap-2"><div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>SECURE CLUSTER</div>
+          <div className="hidden md:flex text-[10px] font-black text-slate-900 items-center gap-2">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+            LIVE DEPLOYMENT STREAM
+          </div>
         </header>
 
-        <div className="p-8 md:p-10 min-h-screen">
+        <div className="p-6 md:p-10 flex-1">
           {view.path === 'dashboard' && renderDashboard()}
           {(view.path === 'leads' || view.path === 'lead-detail') && <LeadsPage onNavigate={navigate} selectedId={view.id} />}
           {(view.path === 'orders' || view.path === 'order-detail') && <OrdersPage onNavigate={navigate} selectedId={view.id} />}

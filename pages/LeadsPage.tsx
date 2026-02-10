@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { MOCK_DB } from '../data/mockDb';
 import { UserRole, RoutePath, LeadStatus, LeadPriority } from '../types';
 import { Plus, Target, Mail, Phone, MapPin, ChevronRight, Edit3 } from 'lucide-react';
@@ -8,7 +8,15 @@ import { useAuthContext } from '../context/AuthContext';
 export const LeadsPage: React.FC<{ onNavigate: (path: RoutePath, id?: string) => void, selectedId?: string }> = ({ onNavigate, selectedId }) => {
   const { currentUser } = useAuthContext();
   const lead = selectedId ? MOCK_DB.leads.find(l => l.id === selectedId) : null;
-  const canEdit = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SALES;
+  const canEdit = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SALES_USER || currentUser?.role === UserRole.SALES_MANAGER;
+
+  const filteredLeads = useMemo(() => {
+    if (currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SALES_MANAGER) {
+      return MOCK_DB.leads;
+    }
+    // Sales User only sees their own leads
+    return MOCK_DB.leads.filter(l => l.salesUserId === currentUser?.uid);
+  }, [currentUser]);
 
   if (selectedId && lead) {
     return (
@@ -53,25 +61,20 @@ export const LeadsPage: React.FC<{ onNavigate: (path: RoutePath, id?: string) =>
         <div className="bg-slate-900 p-10 rounded-[3rem] text-white">
            <h3 className="text-xl font-bold mb-6">Operations Log</h3>
            <p className="text-slate-400 text-sm leading-relaxed italic">"{lead.notes || 'No contextual intelligence logged for this lead node.'}"</p>
-           {canEdit && (
-             <button className="mt-8 flex items-center gap-2 text-brand-blue text-xs font-black uppercase tracking-widest hover:text-white transition-colors">
-               <Edit3 size={14}/> Append Intelligence
-             </button>
-           )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-fade-in text-left">
+    <div className="space-y-8 animate-fade-in text-left pb-10">
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter">Leads Registry</h2>
-          <p className="text-slate-400 font-bold uppercase text-[9px] tracking-widest mt-1">Pipeline Telemetry</p>
+          <h2 className="text-4xl font-black tracking-tighter text-slate-900">Leads Registry</h2>
+          <p className="text-slate-400 font-bold uppercase text-[9px] tracking-widest mt-1">Authorized Pipeline Telemetry</p>
         </div>
-        {canEdit && (
-          <button onClick={() => onNavigate('add')} className="bg-brand-blue text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 hover:bg-brand-dark">
+        {(currentUser?.role === UserRole.SALES_USER || currentUser?.role === UserRole.SALES_MANAGER) && (
+          <button onClick={() => onNavigate('add')} className="bg-brand-blue text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 hover:bg-brand-dark transition-all">
             <Plus size={16} /> New Lead
           </button>
         )}
@@ -90,28 +93,34 @@ export const LeadsPage: React.FC<{ onNavigate: (path: RoutePath, id?: string) =>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {MOCK_DB.leads.map(lead => (
-                <tr 
-                  key={lead.id} 
-                  onClick={() => onNavigate('lead-detail', lead.id)}
-                  className="hover:bg-slate-50 transition-colors group cursor-pointer"
-                >
-                  <td className="px-8 py-5">
-                    <p className="font-bold text-slate-900">{lead.name}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{lead.companyName}</p>
-                  </td>
-                  <td className="px-8 py-5 text-sm text-slate-600 font-medium">{lead.phone}</td>
-                  <td className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">{lead.source}</td>
-                  <td className="px-8 py-5">
-                    <span className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border tracking-widest ${lead.status === LeadStatus.CONVERTED ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-blue/5 text-brand-blue'}`}>
-                      {lead.status}
-                    </span>
-                  </td>
-                  <td className="px-8 py-5 text-right">
-                    <ChevronRight className="inline-block text-slate-300 group-hover:text-brand-blue transition-colors" size={18}/>
-                  </td>
+              {filteredLeads.length === 0 ? (
+                <tr>
+                   <td colSpan={5} className="px-8 py-20 text-center text-slate-300 font-bold italic">No signals identified.</td>
                 </tr>
-              ))}
+              ) : (
+                filteredLeads.map(lead => (
+                  <tr 
+                    key={lead.id} 
+                    onClick={() => onNavigate('lead-detail', lead.id)}
+                    className="hover:bg-slate-50 transition-colors group cursor-pointer"
+                  >
+                    <td className="px-8 py-5">
+                      <p className="font-bold text-slate-900">{lead.name}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{lead.companyName}</p>
+                    </td>
+                    <td className="px-8 py-5 text-sm text-slate-600 font-medium">{lead.phone}</td>
+                    <td className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">{lead.source}</td>
+                    <td className="px-8 py-5">
+                      <span className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border tracking-widest ${lead.status === LeadStatus.CONVERTED ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-blue/5 text-brand-blue'}`}>
+                        {lead.status}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                      <ChevronRight className="inline-block text-slate-300 group-hover:text-brand-blue transition-colors" size={18}/>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

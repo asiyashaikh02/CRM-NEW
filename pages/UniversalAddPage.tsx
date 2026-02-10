@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { MOCK_DB } from '../data/mockDb';
-import { LeadSource, RoutePath } from '../types';
+import { LeadSource, RoutePath, LeadStatus, OrderStatus } from '../types';
 import { Sun, ArrowRight, Target, ClipboardList, MapPin, Navigation } from 'lucide-react';
 
 const InputField = ({ label, value, onChange, placeholder, type = 'text', inputRef }: any) => (
@@ -154,7 +155,7 @@ export const UniversalAddPage: React.FC<{ onNavigate: (path: RoutePath) => void 
             <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-4">Select Lead Node</label>
             <select value={convLeadId} onChange={e => setConvLeadId(e.target.value)} required className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 text-sm font-bold outline-none">
               <option value="">Choose a signal...</option>
-              {MOCK_DB.leads.filter(l => l.status !== 'Converted').map(l => (
+              {MOCK_DB.leads.filter(l => l.status !== LeadStatus.CONVERTED).map(l => (
                 <option key={l.id} value={l.id}>{l.name} — {l.companyName} ({l.city})</option>
               ))}
             </select>
