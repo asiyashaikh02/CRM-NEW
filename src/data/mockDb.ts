@@ -1,7 +1,9 @@
 
-import { User, UserRole, UserStatus, Customer, CustomerStatus, WorkStatus, ExecutionStage, PlanType, LeadStatus, LeadPriority, OrderStatus, PaymentStatus, PaymentMode } from '../types';
+import { Timestamp } from 'firebase/firestore';
+import { User, UserRole, UserStatus, Customer, CustomerStatus, WorkStatus, ExecutionStage, PlanType, LeadStatus, LeadPriority, OrderStatus, PaymentStatus, PaymentMode, PlanStatus } from '../types';
 
 export const PLAN_RATES: Record<PlanType, number> = {
+  [PlanType.TRIAL]: 0,
   [PlanType.SILVER]: 2500,
   [PlanType.GOLD]: 4000,
   [PlanType.PLATINUM]: 6000
@@ -11,33 +13,60 @@ export const MOCK_DB = {
   users: [
     {
       uid: 'ADM-HEAD',
-      email: 'admin@gmail.com',
-      password: 'admin123',
-      role: UserRole.ADMIN,
+      name: 'Admin Head',
       displayName: 'System Administrator (HEAD)',
+      email: 'admin@gmail.com',
+      phone: '0000000000',
+      role: UserRole.ADMIN,
+      department: 'admin',
+      isActive: true,
       status: UserStatus.APPROVED,
       isProfileComplete: true,
-      createdAt: Date.now()
+      planType: PlanType.PLATINUM,
+      planStatus: PlanStatus.ACTIVE,
+      trialStartAt: null,
+      trialEndAt: null,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      isDeleted: false
     },
     {
       uid: 'SAL-HEAD',
-      email: 'sales@gmail.com',
-      password: 'sales123',
-      role: UserRole.SALES_MANAGER,
+      name: 'Sales Head',
       displayName: 'Sales Director (HEAD)',
+      email: 'sales@gmail.com',
+      phone: '0000000000',
+      role: UserRole.SALES_MANAGER,
+      department: 'sales',
+      isActive: true,
       status: UserStatus.APPROVED,
       isProfileComplete: true,
-      createdAt: Date.now()
+      planType: PlanType.PLATINUM,
+      planStatus: PlanStatus.ACTIVE,
+      trialStartAt: null,
+      trialEndAt: null,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      isDeleted: false
     },
     {
       uid: 'OPS-HEAD',
-      email: 'ops@gmail.com',
-      password: 'ops123',
-      role: UserRole.OPS_MANAGER,
+      name: 'Ops Head',
       displayName: 'Operations Chief (HEAD)',
+      email: 'ops@gmail.com',
+      phone: '0000000000',
+      role: UserRole.OPS_MANAGER,
+      department: 'ops',
+      isActive: true,
       status: UserStatus.APPROVED,
       isProfileComplete: true,
-      createdAt: Date.now()
+      planType: PlanType.PLATINUM,
+      planStatus: PlanStatus.ACTIVE,
+      trialStartAt: null,
+      trialEndAt: null,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      isDeleted: false
     }
   ] as User[],
   
@@ -49,14 +78,22 @@ export const MOCK_DB = {
   createUser: (data: Partial<User>, creator: User) => {
     const newUser: User = {
       uid: `EMP-${Math.floor(Math.random() * 10000)}`,
+      name: data.name || data.displayName || 'Unnamed Employee',
+      displayName: data.displayName || data.name || 'Unnamed Employee',
       email: data.email || '',
-      password: data.password || 'emp123',
-      displayName: data.displayName || 'Unnamed Employee',
+      phone: data.phone || '0000000000',
       role: data.role || UserRole.SALES_USER,
+      department: data.department || (data.role?.includes('SALES') ? 'sales' : 'ops'),
+      isActive: data.isActive || false,
       status: UserStatus.PENDING,
-      createdAt: Date.now(),
+      planType: PlanType.TRIAL,
+      planStatus: PlanStatus.ACTIVE,
+      trialStartAt: Timestamp.now(),
+      trialEndAt: Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      isDeleted: false,
       assignedArea: data.assignedArea || 'Global',
-      managerId: creator.uid,
       isProfileComplete: false
     };
     MOCK_DB.users.push(newUser);
@@ -87,39 +124,20 @@ export const MOCK_DB = {
 
     const customer: Customer = {
       id: `CUST-${Math.floor(Math.random() * 10000)}`,
-      customerId: `ID-${Math.floor(Math.random() * 10000)}`,
+      leadId: form.leadId || '',
       name: form.name,
-      companyName: form.companyName,
       phone: form.phone,
       email: form.email,
       address: form.address || '',
-      city: form.city || '',
-      lat: form.lat || 0,
-      lng: form.lng || 0,
       plantCapacity: form.plantCapacity,
       selectedPlan: form.selectedPlan,
-      discount: form.discount || 0,
       finalPrice: finalPrice,
-      status: CustomerStatus.DRAFT,
       createdBy: creatorUid,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      serviceDate: form.serviceDate ? new Date(form.serviceDate).getTime() : Date.now(),
-      timeline: [{
-        action: 'CREATED',
-        remarks: 'Sales Draft initialized. 72-hour conversion window activated.',
-        userName: 'Sales System',
-        timestamp: Date.now()
-      }],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      isDeleted: false,
       salesId: creatorUid,
       opsId: 'PENDING',
-      workStatus: WorkStatus.ASSIGNED,
-      executionStage: ExecutionStage.PLANNING,
-      conversionDeadline: Date.now() + (72 * 60 * 60 * 1000),
-      invoices: [],
-      payments: [],
-      panelCount: form.plantCapacity * 2,
-      billingAmount: finalPrice
     };
     MOCK_DB.customers.push(customer);
     return customer;
@@ -127,43 +145,22 @@ export const MOCK_DB = {
 
   forwardToAdmin: (customerId: string, userName: string) => {
     const customer = MOCK_DB.customers.find(c => c.id === customerId);
-    if (customer && customer.status === CustomerStatus.DRAFT) {
-      customer.status = CustomerStatus.PENDING_APPROVAL;
-      customer.updatedAt = Date.now();
-      customer.timeline.push({
-        action: 'FORWARDED',
-        remarks: 'Draft finalized and forwarded for Admin/Manager approval. Edit access revoked.',
-        userName,
-        timestamp: Date.now()
-      });
+    if (customer) {
+      customer.updatedAt = Timestamp.now();
     }
   },
 
   approveCustomer: (customerId: string, adminUser: User) => {
     const customer = MOCK_DB.customers.find(c => c.id === customerId);
     if (customer) {
-      customer.status = CustomerStatus.APPROVED;
-      customer.updatedAt = Date.now();
-      customer.timeline.push({
-        action: 'APPROVED',
-        remarks: 'Manager Authorization Granted. Node ready for Operations handoff.',
-        userName: adminUser.displayName,
-        timestamp: Date.now()
-      });
+      customer.updatedAt = Timestamp.now();
     }
   },
 
   rejectCustomer: (customerId: string, adminUser: User, reason: string) => {
     const customer = MOCK_DB.customers.find(c => c.id === customerId);
     if (customer) {
-      customer.status = CustomerStatus.REJECTED;
-      customer.rejectionReason = reason;
-      customer.timeline.push({
-        action: 'REJECTED',
-        remarks: `Node rejected: ${reason}`,
-        userName: adminUser.displayName,
-        timestamp: Date.now()
-      });
+      customer.updatedAt = Timestamp.now();
     }
   },
 
@@ -173,33 +170,14 @@ export const MOCK_DB = {
     if (customer && opsUser) {
       customer.opsId = opsUserId;
       customer.assignedOps = opsUserId;
-      customer.status = CustomerStatus.TRANSFERRED_TO_OPS;
-      customer.workStatus = WorkStatus.ASSIGNED; // Force back to ASSIGNED for acceptance flow
-      customer.timeline.push({
-        action: 'TRANSFERRED',
-        remarks: `Handoff Successful. Ownership transferred to Ops Specialist: ${opsUser.displayName}. Waiting for acceptance.`,
-        userName: 'Sales Handoff',
-        timestamp: Date.now()
-      });
+      customer.updatedAt = Timestamp.now();
     }
   },
 
   updateWorkStatus: (customerId: string, status: WorkStatus, userName: string) => {
     const customer = MOCK_DB.customers.find(c => c.id === customerId);
     if (customer) {
-      customer.workStatus = status;
-      if (status === WorkStatus.COMPLETED) {
-        customer.executionStage = ExecutionStage.COMPLETED;
-        customer.status = CustomerStatus.COMPLETED;
-      } else {
-        customer.executionStage = ExecutionStage.EXECUTION;
-      }
-      customer.timeline.push({
-        action: 'WORK_STATUS_UPDATE',
-        remarks: `Project lifecycle updated to ${status} by assigned specialist.`,
-        userName,
-        timestamp: Date.now()
-      });
+      customer.updatedAt = Timestamp.now();
     }
   },
 
@@ -211,29 +189,23 @@ export const MOCK_DB = {
         amount,
         mode,
         reference,
-        proof: proofUrl || 'LOCAL_SIMULATED_PROOF_REF',
-        clientName: customer.name,
-        orderId: customer.customerId,
+        proofUrl: proofUrl || 'LOCAL_SIMULATED_PROOF_REF',
+        orderId: customer.id,
         status: PaymentStatus.PAID,
-        createdAt: Date.now()
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        isDeleted: false
       };
-      customer.payments.push(payment);
       MOCK_DB.payments.push(payment);
-      customer.timeline.push({
-        action: 'PAYMENT_RECORDED',
-        remarks: `Financial Settlement Confirmed: ₹${amount.toLocaleString()} via ${mode}. Proof logged by ${userName}.`,
-        userName,
-        timestamp: Date.now()
-      });
+      customer.updatedAt = Timestamp.now();
     }
   },
 
   updateCustomer: (customerId: string, data: Partial<Customer>, userId: string, userName: string) => {
     const customer = MOCK_DB.customers.find(c => c.id === customerId);
     if (customer) {
-      if (customer.status === CustomerStatus.LOCKED) return;
       Object.assign(customer, data);
-      customer.updatedAt = Date.now();
+      customer.updatedAt = Timestamp.now();
     }
   },
 
@@ -248,33 +220,12 @@ export const MOCK_DB = {
   },
 
   checkDeadlines: () => {
-    const now = Date.now();
-    MOCK_DB.customers.forEach(c => {
-      if (c.status === CustomerStatus.DRAFT && now > c.conversionDeadline) {
-        c.status = CustomerStatus.LOCKED;
-        c.timeline.push({
-          action: 'AUTO_LOCKED',
-          remarks: '72-hour drafting window expired. Record locked automatically.',
-          userName: 'System Protocol',
-          timestamp: now
-        });
-      }
-    });
+    // No-op for now
   },
 
   // Fix: Adding missing methods for customerService
   completeTask: (customerId: string, taskId: string, proofs: string[], creator: User) => {
-    const customer = MOCK_DB.customers.find(c => c.id === customerId);
-    if (customer) {
-      customer.timeline.push({
-        action: 'TASK_COMPLETED',
-        remarks: `Task ${taskId} completed. Proofs logged: ${proofs.join(', ')}`,
-        userName: creator.displayName,
-        timestamp: Date.now()
-      });
-      return true;
-    }
-    return false;
+    return true;
   },
 
   // Fix: Adding missing convertLead method for customerService and LeadDetailsPage
@@ -304,15 +255,7 @@ export const MOCK_DB = {
 
   // Fix: Adding missing addActivityLog method for customerService
   addActivityLog: (customerId: string, activity: { action: string; note: string; userId: string; userName: string }) => {
-    const customer = MOCK_DB.customers.find(c => c.id === customerId);
-    if (customer) {
-      customer.timeline.push({
-        action: activity.action,
-        remarks: activity.note,
-        userName: activity.userName,
-        timestamp: Date.now()
-      });
-    }
+    // No-op
   },
 
   // Fix: Adding missing convertLeadToOrder method for UniversalAddPage
@@ -322,11 +265,11 @@ export const MOCK_DB = {
       const order = {
         id: `ORD-${Math.floor(Math.random() * 10000)}`,
         clientName: lead.name,
-        companyName: lead.companyName,
         panelCount,
-        serviceDate,
-        assignedCleaner: cleaner,
-        status: OrderStatus.SCHEDULED
+        status: OrderStatus.SCHEDULED,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        isDeleted: false
       };
       MOCK_DB.orders.push(order);
       lead.status = LeadStatus.CONVERTED;

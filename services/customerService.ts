@@ -1,47 +1,31 @@
-import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { doc, updateDoc, deleteDoc, writeBatch, serverTimestamp, Timestamp } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { Customer, CustomerStatus, ExecutionStage, Lead, WorkStatus, PlanType } from "../types";
 
-// Fixed: Corrected Customer object mapping to match the interface in types.ts
 export const convertLeadToCustomer = async (lead: Lead) => {
   const batch = writeBatch(db);
   const customerId = `cust_${lead.id}`;
   
-  const customerData: Customer = {
+  const customerData: any = {
     id: customerId,
-    customerId: `CUST-${lead.id}`,
-    name: lead.name,
-    companyName: lead.companyName,
-    phone: lead.phone || '',
-    email: lead.email || '',
-    address: '',
-    // Fix: Added missing city property from lead to satisfy Customer interface requirements
-    city: lead.city || '',
-    panelCount: lead.panelCount,
-    // Estimated capacity for new nodes
-    plantCapacity: lead.panelCount * 0.5,
+    leadId: lead.id,
+    name: lead.clientName,
+    phone: lead.clientPhone,
+    email: '',
+    address: lead.location.address,
+    plantCapacity: (lead.panelCount || 0) * 0.5,
     selectedPlan: PlanType.SILVER,
-    discount: 0,
-    finalPrice: lead.potentialValue,
-    createdBy: lead.salesUserId,
-    status: CustomerStatus.ACTIVE,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    // Fix: Added missing serviceDate property required by Customer interface
-    serviceDate: Date.now(),
-    timeline: [],
-    salesId: lead.salesUserId,
+    finalPrice: lead.finalPrice,
+    createdBy: lead.createdBy,
+    salesId: lead.createdBy,
     opsId: 'PENDING',
-    workStatus: WorkStatus.ASSIGNED,
-    executionStage: ExecutionStage.PLANNING,
-    billingAmount: lead.potentialValue,
-    conversionDeadline: Date.now() + (72 * 60 * 60 * 1000), // 72 hours
-    invoices: [],
-    payments: []
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    isDeleted: false
   };
 
   batch.set(doc(db, "customers", customerId), customerData);
-  batch.delete(doc(db, "leads", lead.id));
+  batch.update(doc(db, "leads", lead.id), { isDeleted: true, updatedAt: serverTimestamp() });
   
   await batch.commit();
 };

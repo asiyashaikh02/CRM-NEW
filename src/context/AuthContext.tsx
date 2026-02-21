@@ -44,7 +44,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStatus('LOADING');
     return new Promise((resolve) => {
       setTimeout(() => {
-        const user = MOCK_DB.users.find(u => u.email === email && u.password === pass);
+        // In mock mode, we just check email. In real mode, this context should use Firebase.
+        const user = MOCK_DB.users.find(u => u.email === email);
         if (user) {
           // Check for head roles or approved status
           const isHead = [UserRole.ADMIN, UserRole.SALES_MANAGER, UserRole.OPS_MANAGER].includes(user.role);
